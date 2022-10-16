@@ -1,0 +1,164 @@
+"Phrases"
+{
+	"PlayerNotValid"
+	{
+		"en"		"The specified target is not in-game anymore."
+	}
+	// HealBeacon Messages
+	"HealBeacon_Alert"
+	{
+		"#format"	"{1:d}"
+		"en"		"PLEASE HURRY UP, HUMANS DAMAGING THE PLAYERS WHO ARE FAR FROM BEACON WILL START IN {1}s"
+	}
+	"HealBeacon_Announce"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}now has a {olive}HealBeacon{lightgreen}."
+	}
+	"HealBeacon_AnnounceAdmin"
+	{
+		"#format"	"{1:N},{2:N}"
+		"en"		"{olive}{1} {lightgreen}now has a {olive}HealBeacon{lightgreen}. By Admin: {olive}{2}."
+	}
+	"HealBeacon_Damage"
+	{
+		"en"		"YOU ARE TOO FAR AWAY FROM HEAL BEACONED PLAYERS, PLEASE GET CLOSER TO THEM"
+	}
+	"HealBeacon_Enabled"
+	{
+		"en"		"HealBeacon is currently {olive}ON!"
+	}
+	"HealBeacon_Disabled"
+	{
+		"en"		"HealBeacon is currently {olive}OFF!"
+	}
+	"HealBeacon_PlayerIsNot"
+	{
+		"en"		"The specified target doesn't have a {olive}HealBeacon."
+	}
+	"HealBeacon_PlayerIs"
+	{
+		"en"		"The specified target already has a {olive}HealBeacon."
+	}
+	"HealBeacon_InvalidDistnace"
+	{
+		"en"		"Invalid distance."
+	}
+	"HealBeacon_AddAnnounce"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}now has a HealBeacon."
+	}
+	"HealBeacon_RemoveAnnounce"
+	{
+		"#format"	"{1:N},{2:N}"
+		"en"		"{olive}{1} {lightgreen}removed HealBeacon from {olive}{2}."
+	}
+	"HealBeacon_RepickAnnounce"
+	{
+		"#format"	"{1:N},{2:N},{3:N}"
+		"en"		"{olive}{1} {lightgreen}ran HealBeacon Repick, {olive}{2} {lightgreen}now has a HealBeacon as a replacement of {olive}{3}."
+	}
+	"HealBeacon_ReplaceAnnounce"
+	{
+		"#format"	"{1:N},{2:N},{3:N}"
+		"en"		"{olive}{2} {lightgreen}now has a HealBeacon as a replacement of {olive}{3}{lightgreen}. by Admin {olive}{1}."
+	}
+	"HealBeacon_Slay"
+	{
+		"#format"	"{1:N}"
+		"en"		"You have slayed {olive}{1}."
+	}
+	"HealBeacon_NeonRemove"
+	{
+		"#format"	"{1:N}"
+		"en"		"You have Toggled Neon OFF for {olive}{1}."
+	}
+	"HealBeacon_NeonAdd"
+	{
+		"#format"	"{1:N}"
+		"en"		"You have Toggled Neon ON for {olive}{1}."
+	}
+	"HealBeacon_DistanceChange"
+	{
+		"#format"	"{1:N},{2:f}"
+		"en"		"You have changed Beacon Distance of {olive}{1} {lightgreen}to {olive}{2}."
+	}
+	"HealBeacon_ColorChange"
+	{
+		"#format"	"{1:N},{2:s},{3:s}"
+		"en"		"You have changed Beacon And Neon Color of {olive}{1} {lightgreen}to {{2}}{3}."
+	}
+	"HealBeacon_TimerChange"
+	{
+		"#format"	"{1:d}"
+		"en"		"You have changed HealBeacon timer to {olive}{1}s."
+	}
+	"HealBeacon_DamageChange"
+	{
+		"#format"	"{1:f}"
+		"en"		"You have changed HealBeacon Damage to {olive}{1}."
+	}
+	"HealBeacon_HealChange"
+	{
+		"#format"	"{1:d}"
+		"en"		"You have changed HealBeacon Heal to {olive}{1}."
+	}
+	
+	"HealBeacon_VIPModeOn"
+	{
+		"en"		"VIP Mode is on, HealBeacon and VIP Mode can't be played together at the same time."
+	}
+	// VIPMode Messages
+	"VIPMode_VIPDeath"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}[{fullred}VIP{lightgreen}] has died."
+	}
+	"VIPMode_VIPDeathLaser"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}[{fullred}VIP{lightgreen}] has died due to a Laser. Refusing Killing All humans!"
+	}
+	"VIPMode_VIPDeathSpec"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}[{fullred}VIP{lightgreen}] has moved to Spectators team!"
+	}
+	"VIPMode_VIPDeathDisconnect"
+	{
+		"#format"	"{1:N}"
+		"en"		"{olive}{1} {lightgreen}[{fullred}VIP{lightgreen}] has disconnected!"
+	}
+	"VIPMode_KillAll"
+	{
+		"#format"	"{1:d}"
+		"en"		"VIP DIED, KILLING ALL HUMANS IN {fullred}{1}s."
+	}
+	"VIPMode_Enabled"
+	{
+		"en"		"VIP Mode is currently ON!"
+	}
+	"VIPMode_Disabled"
+	{
+		"en"		"VIP Mode is currently OFF!"
+	}
+	"VIPMode_HealBeaconOn"
+	{
+		"en"		"Heal Beacon mode is ON, VIP Mode and HealBeacon Mode can't be played together at the same time."
+	}
+	// FOG Messages
+	"Fog_Enabled"
+	{
+		"en"		"FOG Mode is now {olive}ON!"
+	}
+	"Fog_Disabled"
+	{
+		"en"		"FOG Mode is now {olive}OFF!"
+	}
+	"Fog_ColorChange"
+	{
+		"#format"	"{1:s},{2:s}"
+		"en"		"You have changed FOG color to {{1}}{2}."
+	}
+}
