@@ -9,6 +9,7 @@
 
 /* COLORS VARIABLES */
 int g_ColorCyan[4] =  {0, 255, 255, 255}; // cyan
+int g_ColorDefault[4] = {255, 215, 55, 255}; // default color
 
 int g_iClientMenuUserId[MAXPLAYERS + 1] = { -1, ... };
 
@@ -71,10 +72,10 @@ enum struct BeaconPlayers {
 	}
 	
 	void ResetColor() {
-		this.color[0] = 255;
-		this.color[1] = 99;
-		this.color[2] = 255;
-		this.color[3] = 33;
+		this.color[0] = g_ColorDefault[0];
+		this.color[1] = g_ColorDefault[1];
+		this.color[2] = g_ColorDefault[2];
+		this.color[3] = g_ColorDefault[3];
 	}
 	
 	void ResetValues() {
@@ -157,8 +158,6 @@ public void OnPluginStart()
 	
 	AutoExecConfig();
 	
-	g_aHBPlayers = new ArrayList(ByteCountToCells(32));
-	
 	for(int i = 1; i <= MaxClients; i++) {
 		if(IsValidClient(i)) {
 			OnClientPutInServer(i);
@@ -179,6 +178,14 @@ public void OnMapStart() {
 	g_bIsVIPModeOn = false;
 	g_bIsHealBeaconOn = false;
 	g_bIsBetterDamageModeOn = false;
+	
+	/* CREATE HEALBEACON ARRAYLIST */
+	g_aHBPlayers = new ArrayList(ByteCountToCells(32));
+}
+
+public void OnMapEnd() {
+	/* DELETE THE ARRAYLIST HANDLE */
+	delete g_aHBPlayers;
 }
 
 public void OnClientPutInServer(int client) {
