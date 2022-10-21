@@ -72,6 +72,7 @@ stock void HealBeacon_DisplaySettingsMenu(int client) {
 	menu.AddItem("1", "Change Heal Beacon Heal Per second");
 	menu.AddItem("2", "Change The first pick timer");
 	menu.AddItem("3", "Toggle better damage mode");
+	menu.AddItem("4", "Change Heal Beacon Default Color");
 	
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -112,6 +113,10 @@ public int SettingsMenu_Handler(Menu menu, MenuAction action, int param1, int pa
 						g_bIsBetterDamageModeOn = true;
 						CPrintToChat(param1, "%s Better Damage Mode is now {olive}ON!", HealBeacon_Tag);
 					}
+				}
+				
+				case 4: {
+					HealBeacon_DisplayBeaconDefaultColorMenu(param1);
 				}
 			}
 		}
@@ -244,6 +249,70 @@ public int BeaconTimerMenu_Handler(Menu menu, MenuAction action, int param1, int
 			
 			g_cvHealBeaconTimer.FloatValue = float(num);
 			CPrintToChat(param1, "%s %T", HealBeacon_Tag, "HealBeacon_TimerChange", param1, num);
+			HealBeacon_DisplaySettingsMenu(param1);
+		}
+	}
+	
+	return 0;
+}
+
+/* BEACON DEFAULT COLOR MENU */
+stock void HealBeacon_DisplayBeaconDefaultColorMenu(int client) {
+	Menu menu = new Menu(BeaconDefaultColorMenu_Handler);
+	
+	/* CHECK DEFAULT COLOR NAME */
+	char colorName[32];
+	for(int i = 0; i < sizeof(colorsList); i++) {
+		char buffers[5][64];
+		ExplodeString(colorsList[i], " ", buffers, 5, sizeof(buffers[]));
+		
+		if(StringToInt(buffers[0]) == g_ColorDefault[0] && StringToInt(buffers[1]) == g_ColorDefault[1]
+		&& StringToInt(buffers[2]) == g_ColorDefault[2] && StringToInt(buffers[3]) == g_ColorDefault[3]) {
+			Format(colorName, sizeof(colorName), buffers[4]);
+			break;
+		}
+	}
+	
+	char title[256];
+	Format(title, sizeof(title), "Change Heal Beacon Default Color\nDefault Color: %s", colorName);
+	menu.SetTitle(title);
+	
+	for(int i = 0; i < sizeof(colorsList); i++) {
+		char buffers[5][64];
+		ExplodeString(colorsList[i], " ", buffers, 5, sizeof(buffers[]));
+		menu.AddItem(colorsList[i], buffers[4]);
+	}
+	
+	menu.ExitBackButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int BeaconDefaultColorMenu_Handler(Menu menu, MenuAction action, int param1, int param2) {
+	switch(action) {
+		case MenuAction_End: {
+			delete menu;
+		}
+		
+		case MenuAction_Cancel: {
+			if(param2 == MenuCancel_ExitBack) {
+				HealBeacon_DisplaySettingsMenu(param1);
+			}
+		}
+		
+		case MenuAction_Select: {
+			char info[128];
+			menu.GetItem(param2, info, sizeof(info));
+			
+			char buffers[5][64];
+			ExplodeString(info, " ", buffers, 5, sizeof(buffers[]));
+			
+			g_ColorDefault[0] = StringToInt(buffers[0]);
+			g_ColorDefault[1] = StringToInt(buffers[1]);
+			g_ColorDefault[2] = StringToInt(buffers[2]);
+			g_ColorDefault[3] = StringToInt(buffers[3]);
+			
+			CPrintToChat(param1, "%s You have changed the Default Beacon Color to {%s}%s.", HealBeacon_Tag, buffers[4], buffers[4]);
+			HealBeacon_DisplayBeaconDefaultColorMenu(param1);
 		}
 	}
 	
