@@ -10,7 +10,7 @@ stock void RoundStart_Fog() {
 	if(!g_FogData.fogEnable) {
 		return;
 	}
-	
+		
 	if(IsValidEntity(g_iFogEntity)) {
 		for(int i = 1; i <= MaxClients; i++) {
 			if(!IsClientInGame(i)) {
@@ -28,6 +28,15 @@ stock void RoundStart_Fog() {
 }
 
 stock void CreateFogEntity() {
+	/* CHECK FOR ANY FOG MAP HAS */
+	int entity = -1;
+	while((entity = FindEntityByClassname(entity, "env_fog_controller")) != -1) {
+		if(entity == g_iFogEntity) {
+			continue;
+		}
+		
+		AcceptEntityInput(entity, "TurnOff");
+	}
 	
 	char sColor[64];
 	Format(sColor, sizeof(sColor), "%i %i %i %i", g_FogData.fogColor[0], g_FogData.fogColor[1], g_FogData.fogColor[2], g_FogData.fogColor[3]);
@@ -41,7 +50,6 @@ stock void CreateFogEntity() {
 		return;
 	}
 	
-	PrintToChatAll("fog is created");
 	DispatchKeyValue(g_iFogEntity, "targetname", "fog_mode_aaa34124n");
 	DispatchKeyValue(g_iFogEntity, "fogenable", "1");
 	DispatchKeyValue(g_iFogEntity, "fogblend", "1");
@@ -234,6 +242,7 @@ public int FogColorsMenu_Handler(Menu menu, MenuAction action, int param1, int p
 Action Cmd_FogEnable(int client, int args) {
 	if(g_FogData.fogEnable) {
 		g_FogData.fogEnable = false;
+		AcceptFogInput(FOGInput_Toggle);
 		CReplyToCommand(client, "%s FOG Mode is now {olive}OFF!", Fog_Tag);
 		return Plugin_Handled;
 	}
