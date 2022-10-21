@@ -10,46 +10,55 @@ stock void PluginStart_VIPMode() {
 	g_cvVIPModeLaser = CreateConVar("sm_vipmode_laser", "1", "Don't Kill all humans when vip dies to a laser, 1 = Enabled, 0 = Disabled");
 }
 
-Action OnTakeDamagePost(int victim, int &attacker, int &inflictor, float &damage, int &damagetype) {
+public void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype) {
 	if(!g_bIsVIPModeOn) {
-		return Plugin_Continue;
+		return;
+	}
+	
+	if(!g_cvVIPModeLaser.BoolValue) {
+		return;
 	}
 	
 	int vip = GetClientOfUserId(g_iVIPUserid);
 	if(!IsValidClient(vip)) {
-		return Plugin_Continue;
+		return;
 	}
 	
 	if(victim != vip) {
-		return Plugin_Continue;
+		return;
 	}
 	
-	if(!IsPlayerAlive(victim)) {
-		return Plugin_Continue;
+	if(IsPlayerAlive(victim)) {
+		return;
 	}
-	
-	if(IsValidClient(attacker) || attacker == 0) {
-		return Plugin_Continue;
-	}
-	
-	if(!g_cvVIPModeLaser.BoolValue) {
-		return Plugin_Continue;
-	}
-	
+
 	if(!IsValidEntity(attacker)) {
-		return Plugin_Continue;
+		PrintToChatAll("entity is invalid entity");
+		return;
+	}
+	
+	char classname[64];
+	if(!GetEntityClassname(attacker, classname, sizeof(classname))) {
+		return;
+	}
+	
+	/* if attacker entity is not trigger_hurt */
+	if(!StrEqual(classname, "trigger_hurt")) {
+		KillVIPAndHumans(victim);
+		return;
 	}
 	
 	/* we should now check if trigger_hurt is from a laser */
-	int parent = GetEntPropEnt(attacker, Prop_Send, "m_hParent");
-	if(!IsValidEntity(attacker)) {
-		return Plugin_Continue;
+	int parent = GetEntPropEnt(attacker, Prop_Data, "m_hParent");
+	if(!IsValidEntity(parent)) {
+		PrintToChatAll("parent is invalid entity");
+		return;
 	}
 	
 	bool isFromLaser = false;
 	char parentClassName[64];
 	if(!GetEntityClassname(parent, parentClassName, sizeof(parentClassName))) {
-		return Plugin_Continue;
+		return;
 	}
 	
 	if(StrEqual(parentClassName, "func_movelinear") || StrEqual(parentClassName, "func_door")) {
@@ -57,22 +66,47 @@ Action OnTakeDamagePost(int victim, int &attacker, int &inflictor, float &damage
 	}
 	
 	if(!isFromLaser) {
-		CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_VIPDeath", victim, victim);
-		CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_KillAll", victim, g_cvVIPModeCount.IntValue);
-	
-		delete g_hKillAllTimer;
-		g_hKillAllTimer = CreateTimer(g_cvVIPModeCount.FloatValue, VIPMode_KillAllTimer);
-		g_iVIPUserid = -1;
-		return Plugin_Continue;
+		KillVIPAndHumans(victim);
+		return;
 	}
 	
 	CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_VIPDeathLaser", victim, victim);
 	g_iVIPUserid = -1;
-	return Plugin_Continue;
+	return;
+}
+
+stock void KillVIPAndHumans(int victim) {
+	CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_VIPDeath", victim, victim);
+	CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_KillAll", victim, g_cvVIPModeCount.IntValue);
+
+	delete g_hKillAllTimer;
+	g_hKillAllTimer = CreateTimer(g_cvVIPModeCount.FloatValue, VIPMode_KillAllTimer);
+	g_iVIPUserid = -1;
+}
+
+public void ZR_OnClientInfected(int client, int attacker, bool motherInfect, bool respawnOverride, bool respawn) {
+	if(!g_bIsVIPModeOn) {
+		return;
+	}
+	
+	if(!g_cvVIPModeLaser.BoolValue) {
+		return;
+	}
+	
+	int vip = GetClientOfUserId(g_iVIPUserid);
+	if(vip != client) {
+		return;
+	}
+	
+	KillVIPAndHumans(client);
 }
 
 stock void PlayerDeath_VIPMode(int userid) {
 	if(!g_bIsVIPModeOn) {
+		return;
+	}
+	
+	if(g_cvVIPModeLaser.BoolValue) {
 		return;
 	}
 	
@@ -90,12 +124,7 @@ stock void PlayerDeath_VIPMode(int userid) {
 		return;
 	}
 	
-	CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_VIPDeath", client, client);
-	CPrintToChatAll("%s %T", VIPMode_Tag, "VIPMode_KillAll", client, g_cvVIPModeCount.IntValue);
-
-	delete g_hKillAllTimer;
-	g_hKillAllTimer = CreateTimer(g_cvVIPModeCount.FloatValue, VIPMode_KillAllTimer);
-	g_iVIPUserid = -1;
+	KillVIPAndHumans(client);
 }
 
 stock void PlayerTeam_VIPMode(int userid, int team) {
@@ -232,6 +261,11 @@ Action VIP_BeaconTimer(Handle timer, int userid) {
 		return Plugin_Stop;
 	}
 	
+	if(g_bRoundEnd) {
+		g_hVIPBeaconTimer[client] = null;
+		return Plugin_Stop;
+	}
+	
 	BeaconPlayer(client, BeaconMode_VIP); 
 	return Plugin_Continue;
 }
@@ -296,6 +330,11 @@ Action Cmd_SetVIP(int client, int args) {
 	int vip = GetClientOfUserId(g_iVIPUserid);
 	if(target == vip) {
 		CReplyToCommand(client, "%s The specified target is already VIP!", VIPMode_Tag);
+		return Plugin_Handled;
+	}
+	
+	if(!IsPlayerAlive(target) || GetClientTeam(target) != CS_TEAM_CT) {
+		CReplyToCommand(client, "%s Cannot set VIP to a player that is not human.", VIPMode_Tag);
 		return Plugin_Handled;
 	}
 	
