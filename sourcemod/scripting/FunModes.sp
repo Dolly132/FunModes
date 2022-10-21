@@ -136,7 +136,7 @@ public Plugin myinfo =  {
 	name = "FunModes",
 	author = "Abandom (aka Dolly)",
 	description = "bunch of fun modes for ze mode",
-	version = "1.0",
+	version = "1.0.3",
 	url = "https://nide.gg"
 }
 
