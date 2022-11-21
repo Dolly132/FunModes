@@ -6,6 +6,21 @@ stock void PluginStart_Fog() {
 	RegAdminCmd("sm_fog_end", Cmd_FogEnd, ADMFLAG_CONVARS, "Fog End");
 }
 
+stock void PlayerSpawn_Fog(int userid) {
+	CreateTimer(1.0, PlayerSpawn_Timer, userid);
+}
+
+Action PlayerSpawn_Timer(Handle timer, int userid) {
+	int client = GetClientOfUserId(userid);
+	if(client < 1 || !g_FogData.fogEnable) {
+		return Plugin_Stop;
+	}
+	
+	SetVariantString("fog_mode_aaa34124n");
+	AcceptEntityInput(client, "SetFogController");
+	return Plugin_Continue;
+}
+
 stock void RoundStart_Fog() {
 	if(!g_FogData.fogEnable) {
 		return;
