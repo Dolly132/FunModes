@@ -1,4 +1,7 @@
+#pragma semicolon 1
+#pragma newdecls required
 
+/* CALLED ON PLUGIN START */
 stock void PluginStart_Fog() {
 	RegAdminCmd("sm_fm_fog", Cmd_FogEnable, ADMFLAG_CONVARS, "Enable/Disable fog");
 	RegAdminCmd("sm_fogmode", Cmd_FogSettings, ADMFLAG_CONVARS, "Fog Settings");
