@@ -1,10 +1,11 @@
+#pragma semicolon 1
+
 #include <sourcemod>
 #include <cstrike>
 #include <sdktools>
 #include <sdkhooks>
 #include <multicolors>
 
-#pragma semicolon 1
 #pragma newdecls required
 
 /* COLORS VARIABLES */
@@ -19,7 +20,9 @@ int g_HaloSprite = -1;
 bool g_bIsVIPModeOn;
 bool g_bIsHealBeaconOn;
 bool g_bIsBetterDamageModeOn;
+bool g_bIsRLGLEnabled;
 bool g_bRoundEnd;
+bool g_bEnableDetecting;
 
 #define HealBeacon_Tag "{gold}[FunModes-HealBeacon]{lightgreen}"
 #define BeaconMode_HealBeacon 0
@@ -32,6 +35,8 @@ bool g_bRoundEnd;
 #define FOGInput_Start 1
 #define FOGInput_End 2
 #define FOGInput_Toggle 3
+
+#define RLGL_Tag "{gold}[FunModes-RedLightGreenLight]{lightgreen}"
 
 #define Beacon_Sound        "buttons/blip1.wav"
 
@@ -49,7 +54,7 @@ Handle g_hBeaconTimer[MAXPLAYERS + 1] = { null, ... };
 /* NORMAL VARIABLES */
 int g_iCounter = 0;
 
-/* CONVARS */
+/* HEALBEACON CONVARS */
 ConVar g_cvHealBeaconTimer = null;
 ConVar g_cvAlertTimer = null;
 ConVar g_cvHealBeaconDamage = null;
@@ -116,13 +121,24 @@ char colorsList[][] = {
 	"255 215 0 255 Gold"
 };
 
+/* VIP MODE CONVARS */
 ConVar g_cvVIPModeCount;
 ConVar g_cvVIPModeLaser;
 ConVar g_cvVIPModeTimer;
 
+/* RLGL CONVARS */
+ConVar g_cvRLGLDetectTimer;
+ConVar g_cvRLGLFinishDetectTime;
+ConVar g_cvRLGLDetectTimerRepeat;
+ConVar g_cvRLGLDamage;
+ConVar g_cvRLGLWarningTime;
+
+/* TIMERS */
 Handle g_hKillAllTimer = null;
 Handle g_hVIPRoundStartTimer = null;
 Handle g_hVIPBeaconTimer[MAXPLAYERS + 1] = { null, ... };
+Handle g_hRLGLTimer = null;
+Handle g_hRLGLDetectTimer;
 
 int g_iVIPUserid = -1;
 
@@ -131,12 +147,13 @@ int g_iVIPUserid = -1;
 #include "Fun_Modes/HealBeacon_Menus.sp"
 #include "Fun_Modes/VIPMode.sp"
 #include "Fun_Modes/Fog.sp"
+#include "Fun_Modes/RedLightGreenLight.sp"
 
 public Plugin myinfo =  {
 	name = "FunModes",
-	author = "Abandom (aka Dolly)",
+	author = "Dolly",
 	description = "bunch of fun modes for ze mode",
-	version = "1.0.3",
+	version = "1.2",
 	url = "https://nide.gg"
 }
 
@@ -150,11 +167,16 @@ public void OnPluginStart()
 	HookEvent("round_start", Event_RoundStart);
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_team", Event_PlayerTeam);
+	HookEvent("player_spawn", Event_PlayerSpawn);
 	HookEvent("round_end", Event_RoundEnd);	
+	
+	/* HUD HANDLE */
+	g_hHudMsg = CreateHudSynchronizer();
 	
 	PluginStart_HealBeacon();
 	PluginStart_VIPMode();
 	PluginStart_Fog();
+	PluginStart_RLGL();
 	
 	AutoExecConfig();
 	
@@ -177,15 +199,13 @@ public void OnMapStart() {
 	
 	g_bIsVIPModeOn = false;
 	g_bIsHealBeaconOn = false;
+	g_bIsRLGLEnabled = false;
 	g_bIsBetterDamageModeOn = false;
+	g_bEnableDetecting = false;
 	
 	/* CREATE HEALBEACON ARRAYLIST */
-	g_aHBPlayers = new ArrayList(ByteCountToCells(32));
-}
-
-public void OnMapEnd() {
-	/* DELETE THE ARRAYLIST HANDLE */
 	delete g_aHBPlayers;
+	g_aHBPlayers = new ArrayList(ByteCountToCells(32));
 }
 
 public void OnClientPutInServer(int client) {
@@ -220,6 +240,16 @@ void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast) {
 	
 	PlayerTeam_HealBeacon(userid, team);
 	PlayerTeam_VIPMode(userid, team);
+}
+
+void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
+	if(!g_FogData.fogEnable) {
+		return;
+	}
+	
+	int userid = event.GetInt("userid");
+	
+	PlayerSpawn_Fog(userid);
 }
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
