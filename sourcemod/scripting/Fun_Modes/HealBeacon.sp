@@ -1,3 +1,6 @@
+#pragma semicolon 1
+#pragma newdecls required
+
 /* Called in OnPluginStart */
 stock void PluginStart_HealBeacon() {
 	/* ADMIN COMMANDS */
@@ -8,10 +11,7 @@ stock void PluginStart_HealBeacon() {
 	RegAdminCmd("sm_addnewbeacon", Cmd_HealBeaconAddNew, ADMFLAG_BAN, "Add a new heal beaconed player");
 	RegAdminCmd("sm_removebeacon", Cmd_HealBeaconRemove, ADMFLAG_BAN, "Remove heal beacon player");
 	RegConsoleCmd("sm_checkdistance", Cmd_HealBeaconCheckDistance, "...");
-	
-	/* HUD HANDLE */
-	g_hHudMsg = CreateHudSynchronizer();
-	
+
 	/* CONVARS HANDLES */
 	g_cvHealBeaconTimer = CreateConVar("sm_beacon_timer", "20.0", "The time that will start picking random players at round start");
 	g_cvAlertTimer = CreateConVar("sm_beacon_alert_timer", "10", "How much time in seconds the damage will start being applied from heal beacon as an alert for the other humans");
@@ -491,7 +491,7 @@ Action Cmd_HealBeacon(int client, int args) {
 	/* Check if VIP mode is on first both modes cant be played at the same time*/
 	if(g_bIsVIPModeOn) {
 		if(!client) {
-			CReplyToCommand(client, "%s VIP Mode is on, HealBeacon and VIP Mode can't be played together at the same time.", HealBeacon_Tag);
+			ReplyToCommand(client, "%s VIP Mode is on, HealBeacon and VIP Mode can't be played together at the same time.", HealBeacon_Tag);
 		}
 		else {
 			CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_VIPModeOn", client);
@@ -504,7 +504,7 @@ Action Cmd_HealBeacon(int client, int args) {
 		g_bIsHealBeaconOn = false;
 		HealBeacon_DeleteAllTimers();
 		if(!client) {
-			CReplyToCommand(client, "%s HealBeacon Mode is now OFF!", HealBeacon_Tag);
+			ReplyToCommand(client, "%s HealBeacon Mode is now OFF!", HealBeacon_Tag);
 		}
 		else {
 			CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
@@ -515,7 +515,7 @@ Action Cmd_HealBeacon(int client, int args) {
 	else {
 		g_bIsHealBeaconOn = true;
 		if(!client) {
-			CReplyToCommand(client, "%s HealBeacon Mode is now ON!", HealBeacon_Tag);
+			ReplyToCommand(client, "%s HealBeacon Mode is now ON!", HealBeacon_Tag);
 		}
 		else {
 			CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Enabled", client);
