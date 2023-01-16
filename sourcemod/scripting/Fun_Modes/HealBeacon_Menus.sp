@@ -1,3 +1,6 @@
+#pragma semicolon 1
+#pragma newdecls required
+
 stock void HealBeacon_DisplayMainMenu(int client) {
 	Menu menu = new Menu(MainMenu_Handler);
 	menu.SetTitle("Do Actions on the heal beaconed players");
