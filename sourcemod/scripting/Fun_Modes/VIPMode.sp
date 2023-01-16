@@ -1,4 +1,7 @@
+#pragma semicolon 1
+#pragma newdecls required
 
+/* CALLED ON PLUGIN START */
 stock void PluginStart_VIPMode() {
 	RegAdminCmd("sm_fm_vipmode", Cmd_VIPModeEnable, ADMFLAG_CONVARS, "Enable/Disable VIP Mode");
 	RegAdminCmd("sm_vipmode_setvip", Cmd_SetVIP, ADMFLAG_CONVARS);
