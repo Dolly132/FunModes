@@ -186,3 +186,11 @@ Action RLGL_Detect_Time_Timer(Handle timer) {
 	
 	return Plugin_Continue;
 }
+
+stock void RLGL_GetConVars(ConVar cvars[5]) {
+	cvars[0] = g_cvRLGLDetectTimer;
+	cvars[1] = g_cvRLGLFinishDetectTime;
+	cvars[2] = g_cvRLGLDetectTimerRepeat;
+	cvars[3] = g_cvRLGLDamage;
+	cvars[4] = g_cvRLGLWarningTime;
+}
