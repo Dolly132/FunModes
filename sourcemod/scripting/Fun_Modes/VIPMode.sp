@@ -311,6 +311,14 @@ Action Cmd_VIPModeEnable(int client, int args) {
 			CReplyToCommand(client, "%s %T", VIPMode_Tag, "VIPMode_Enabled", client);
 		}
 		
+		for(int i = 1; i <= MaxClients; i++) {
+			if(!IsClientInGame(i)) {
+				continue;
+			}
+			
+			SDKHook(i, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+		}
+		
 		return Plugin_Handled;
 	}
 }
@@ -363,4 +371,10 @@ Action Cmd_CheckVIP(int client, int args) {
 	
 	CReplyToCommand(client, "%s The current VIP is {olive}%N", VIPMode_Tag, vip);
 	return Plugin_Handled;
+}
+
+stock void VIPMode_GetConVars(ConVar cvars[3]) {
+	cvars[0] = g_cvVIPModeTimer;
+	cvars[1] = g_cvVIPModeCount;
+	cvars[2] = g_cvVIPModeLaser;
 }
