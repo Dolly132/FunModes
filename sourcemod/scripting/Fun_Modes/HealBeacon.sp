@@ -502,6 +502,8 @@ Action Cmd_HealBeacon(int client, int args) {
 	
 	if(g_bIsHealBeaconOn) {
 		g_bIsHealBeaconOn = false;
+		delete g_aHBPlayers;
+		
 		HealBeacon_DeleteAllTimers();
 		if(!client) {
 			ReplyToCommand(client, "%s HealBeacon Mode is now OFF!", HealBeacon_Tag);
@@ -514,6 +516,9 @@ Action Cmd_HealBeacon(int client, int args) {
 	}
 	else {
 		g_bIsHealBeaconOn = true;
+		
+		delete g_aHBPlayers;
+		g_aHBPlayers = new ArrayList(ByteCountToCells(32));
 		if(!client) {
 			ReplyToCommand(client, "%s HealBeacon Mode is now ON!", HealBeacon_Tag);
 		}
@@ -700,4 +705,13 @@ Action Cmd_HealBeaconCheckDistance(int client, int args) {
 	float distance = GetDistanceBetween(client, target);
 	CReplyToCommand(client, "%s Distance between you and %N is: {olive}%.2f.", HealBeacon_Tag, target, distance);
 	return Plugin_Handled;
+}
+
+stock void HealBeacon_GetConVars(ConVar cvars[6]) {
+	cvars[0] = g_cvHealBeaconTimer;
+	cvars[1] = g_cvAlertTimer;
+	cvars[2] = g_cvHealBeaconDamage;
+	cvars[3] = g_cvHealBeaconHeal;
+	cvars[4] = g_cvRandoms;
+	cvars[5] = g_cvDefaultDistance;
 }
