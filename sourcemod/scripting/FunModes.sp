@@ -23,6 +23,7 @@ bool g_bIsBetterDamageModeOn;
 bool g_bIsRLGLEnabled;
 bool g_bRoundEnd;
 bool g_bEnableDetecting;
+bool g_bIsDoubleJumpOn;
 
 #define HealBeacon_Tag "{gold}[FunModes-HealBeacon]{lightgreen}"
 #define BeaconMode_HealBeacon 0
@@ -37,6 +38,10 @@ bool g_bEnableDetecting;
 #define FOGInput_Toggle 3
 
 #define RLGL_Tag "{gold}[FunModes-RedLightGreenLight]{lightgreen}"
+
+#define DoubleJump_Tag "{gold}[FunModes-DoubleJump]{lightgreen}"
+
+#define IC_TAG "{gold}[FunModes-InvertedControls]{lightgreen}"
 
 #define Beacon_Sound        "buttons/blip1.wav"
 
@@ -113,11 +118,11 @@ int g_iFogEntity = -1;
 
 char colorsList[][] = {
 	"255 255 255 255 White",
-	"255 0 0 255 Red", \
-	"0 255 0 255 Lime", \
-	"0 0 255 255 Blue", \
-	"255 255 0 255 Yellow", \
-	"0 255 255 255 Cyan", \
+	"255 0 0 255 Red", 
+	"0 255 0 255 Lime", 
+	"0 0 255 255 Blue", 
+	"255 255 0 255 Yellow", 
+	"0 255 255 255 Cyan", 
 	"255 215 0 255 Gold"
 };
 
@@ -132,6 +137,19 @@ ConVar g_cvRLGLFinishDetectTime;
 ConVar g_cvRLGLDetectTimerRepeat;
 ConVar g_cvRLGLDamage;
 ConVar g_cvRLGLWarningTime;
+
+/* DOUBLE JUMP CONVARS */
+ConVar g_cvDoubleJumpBoost;
+ConVar g_cvDoubleJumpMaxJumps;
+ConVar g_cvDoubleJumpHumansEnable;
+ConVar g_cvDoubleJumpZombiesEnable;
+
+enum ConVarType {
+	CONVAR_TYPE_HEALBEACON = 0,
+	CONVAR_TYPE_VIPMode = 1,
+	CONVAR_TYPE_RLGL = 2,
+	CONVAR_TYPE_DOUBLEJUMP = 3
+}
 
 /* TIMERS */
 Handle g_hKillAllTimer = null;
@@ -148,12 +166,14 @@ int g_iVIPUserid = -1;
 #include "Fun_Modes/VIPMode.sp"
 #include "Fun_Modes/Fog.sp"
 #include "Fun_Modes/RedLightGreenLight.sp"
+#include "Fun_Modes/DoubleJump.sp"
+#include "Fun_Modes/InvertedControls.sp"
 
 public Plugin myinfo =  {
 	name = "FunModes",
 	author = "Dolly",
 	description = "bunch of fun modes for ze mode",
-	version = "1.2",
+	version = "1.3",
 	url = "https://nide.gg"
 }
 
@@ -177,6 +197,8 @@ public void OnPluginStart()
 	PluginStart_VIPMode();
 	PluginStart_Fog();
 	PluginStart_RLGL();
+	PluginStart_DoubleJump();
+	PluginStart_IC();
 	
 	AutoExecConfig();
 	
@@ -184,6 +206,11 @@ public void OnPluginStart()
 		if(IsValidClient(i)) {
 			OnClientPutInServer(i);
 		}
+	}
+	
+	static const char commands[][] = { "sm_fm_cvars", "sm_funmodes", "sm_funmode" };
+	for(int i = 0; i < sizeof(commands); i++) {
+		RegAdminCmd(commands[i], Cmd_Cvars, ADMFLAG_CONVARS, "Shows All fun modes cvars");
 	}
 }
 
@@ -193,22 +220,35 @@ public void OnMapStart() {
 	
 	PrecacheSound(Beacon_Sound, true);
 	
-	g_FogData.fogStart = 50.0;
-	g_FogData.fogEnd = 250.0;
+	g_FogData.fogStart 	= 50.0;
+	g_FogData.fogEnd 	= 250.0;
 	g_FogData.fogEnable = false;
 	
-	g_bIsVIPModeOn = false;
-	g_bIsHealBeaconOn = false;
-	g_bIsRLGLEnabled = false;
+	g_bIsVIPModeOn 			= false;
+	g_bIsHealBeaconOn 		= false;
+	g_bIsRLGLEnabled 		= false;
+	g_bIsDoubleJumpOn 		= false;
 	g_bIsBetterDamageModeOn = false;
-	g_bEnableDetecting = false;
+	g_bEnableDetecting 		= false;
 	
-	/* CREATE HEALBEACON ARRAYLIST */
+	/* DELETE HEALBEACON ARRAYLIST */
 	delete g_aHBPlayers;
-	g_aHBPlayers = new ArrayList(ByteCountToCells(32));
+}
+
+public void OnMapEnd() {
+	g_hRLGLTimer = null;
+	g_hRLGLDetectTimer = null;
 }
 
 public void OnClientPutInServer(int client) {
+	if(!g_bIsVIPModeOn) {
+		return;
+	}
+	
+	if(IsFakeClient(client) || IsClientSourceTV(client)) {
+		return;
+	}
+	
 	SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 } 
 
@@ -304,4 +344,155 @@ stock void BeaconPlayer(int client, int mode) {
 	}
 	
 	GetClientEyePosition(client, fvec);
+}
+
+Action Cmd_Cvars(int client, int args) {
+	if(!client) {
+		return Plugin_Handled;
+	}
+	
+	Menu menu = new Menu(Menu_MainCvars);
+	menu.SetTitle("[FunModes] FunModes Cvars List!");
+	
+	menu.AddItem("0", "- HealBeacon Cvars");
+	menu.AddItem("1", "- VIP Mode Cvars");
+	menu.AddItem("2", "- RedLightGreenLight Cvars");
+	menu.AddItem("3", "- DoubleJump Cvars");
+	
+	menu.ExitButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+	return Plugin_Handled;
+}
+
+int Menu_MainCvars(Menu menu, MenuAction action, int param1, int param2) {
+	switch(action) {
+		case MenuAction_End: {
+			delete menu;
+		}
+		
+		case MenuAction_Select: {
+			ConVarType type;
+			switch(param2) {
+				case 0: {
+					type = CONVAR_TYPE_HEALBEACON;
+				}
+				
+				case 1: {
+					type = CONVAR_TYPE_VIPMode;
+				}
+				
+				case 2: {
+					type = CONVAR_TYPE_RLGL;
+				}
+				
+				case 3: {
+					type = CONVAR_TYPE_DOUBLEJUMP;
+				}
+			}
+			
+			DisplayConVarsListMenu(param1, type);
+		}
+	}
+	
+	return 0;
+}
+
+void DisplayConVarsListMenu(int client, ConVarType type) {
+	Panel panel = new Panel();
+	
+	char title[64];
+	GetTypeTitle(type, title, sizeof(title));
+	panel.SetTitle(title);
+	
+	GetTypeConVarsList(panel, type);
+	
+	panel.CurrentKey = 9;
+	panel.DrawItem("Back");
+	
+	panel.Send(client, Menu_CvarsList, MENU_TIME_FOREVER);
+}
+
+int Menu_CvarsList(Menu menu, MenuAction action, int param1, int param2) {
+	switch(action) {
+		case MenuAction_End: {
+			delete menu;
+		}
+		
+		case MenuAction_Select: {
+			if(param2 == 9) {
+				Cmd_Cvars(param1, 0);
+				return 0;
+			}
+		}
+	}
+	
+	return 0;
+}
+
+void GetTypeTitle(ConVarType type, char[] title, int maxlen) {
+	switch(type) {
+		case CONVAR_TYPE_HEALBEACON: {
+			FormatEx(title, maxlen, "HealBeacon Cvars List");
+		}
+		
+		case CONVAR_TYPE_VIPMode: {
+			FormatEx(title, maxlen, "VIPMode Cvars List");
+		}
+		
+		case CONVAR_TYPE_RLGL: {
+			FormatEx(title, maxlen, "RedLightGreenLight Cvars List");
+		}
+		
+		case CONVAR_TYPE_DOUBLEJUMP: {
+			FormatEx(title, maxlen, "DoubleJump Cvars List");
+		}
+	}
+	
+	return;
+}
+
+void GetTypeConVarsList(Panel panel, ConVarType type) {
+	switch(type) {
+		case CONVAR_TYPE_HEALBEACON: {
+			ConVar cvars[6];
+			HealBeacon_GetConVars(cvars);
+			for(int i = 0; i < sizeof(cvars); i++) {
+				GetConVarNameAndDescription(panel, cvars[i]);
+			}
+		}
+		
+		case CONVAR_TYPE_VIPMode: {
+			ConVar cvars[3];
+			VIPMode_GetConVars(cvars);
+			for(int i = 0; i < sizeof(cvars); i++) {
+				GetConVarNameAndDescription(panel, cvars[i]);
+			}
+		}
+		
+		case CONVAR_TYPE_RLGL: {
+			ConVar cvars[5];
+			RLGL_GetConVars(cvars);
+			for(int i = 0; i < sizeof(cvars); i++) {
+				GetConVarNameAndDescription(panel, cvars[i]);
+			}
+		}
+		
+		case CONVAR_TYPE_DOUBLEJUMP: {
+			ConVar cvars[4];
+			DoubleJump_GetConVars(cvars);
+			for(int i = 0; i < sizeof(cvars); i++) {
+				GetConVarNameAndDescription(panel, cvars[i]);
+			}
+		}
+	}
+}
+
+void GetConVarNameAndDescription(Panel panel, ConVar cvar) {
+	char cvarName[90];
+	cvar.GetName(cvarName, sizeof(cvarName));
+	panel.DrawItem(cvarName);
+	
+	char cvarDescription[128];
+	cvar.GetDescription(cvarDescription, sizeof(cvarDescription));
+	panel.DrawText(cvarDescription);
 }
