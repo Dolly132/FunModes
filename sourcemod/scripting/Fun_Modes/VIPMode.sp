@@ -274,18 +274,6 @@ Action VIP_BeaconTimer(Handle timer, int userid) {
 }
 
 Action Cmd_VIPModeEnable(int client, int args) {
-	/* Check if healbeacon mode is on first both modes cant be played at the same time*/
-	if(g_bIsHealBeaconOn) {
-		if(!client) {
-			CReplyToCommand(client, "%s Heal Beacon mode is ON, VIP Mode and HealBeacon Mode can't be played together at the same time.", VIPMode_Tag);
-		}
-		else {
-			CReplyToCommand(client, "%s %T", VIPMode_Tag, "VIPMode_HealBeaconOn", client);
-		}
-		
-		return Plugin_Handled;
-	}
-	
 	if(g_bIsVIPModeOn) {
 		g_bIsVIPModeOn = false;
 		if(!client) {
