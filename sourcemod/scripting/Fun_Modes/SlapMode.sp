@@ -2,7 +2,7 @@
     (). FunModes V2:
         
     @file           SlapMode.sp
-    @Usage         	
+    @Usage         	Functions for the Slap mode.
     				
 */
 
