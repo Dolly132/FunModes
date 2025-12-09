@@ -1,54 +1,187 @@
+/*
+    (). FunModes V2:
+        
+    @file           HealBeacon.sp
+    @Usage          Functions for the HealBeacon mode.
+*/
+
 #pragma semicolon 1
 #pragma newdecls required
 
-ConVarInfo g_cvInfoHealBeacon[6] = 
+ModeInfo g_HBInfo;
+
+#undef THIS_MODE_INFO
+#define THIS_MODE_INFO g_HBInfo
+
+bool g_bIsBetterDamageModeOn;
+
+/* Arraylist to save client indexes of the heal beaconed players */
+ArrayList g_aHBPlayers;
+
+/* Timers */
+Handle g_hRoundStart_Timer[2] = { null, ... };
+Handle g_hDamageTimer = null;
+Handle g_hHealTimer = null;
+Handle g_hBeaconTimer[MAXPLAYERS + 1] = { null, ... };
+
+#define HB_CONVAR_BEACON_TIMER 		0
+#define HB_CONVAR_ALERT_TIMER 		1
+#define HB_CONVAR_BEACON_DAMAGE		2
+#define HB_CONVAR_BEACON_HEAL		3
+#define HB_CONVAR_RANDOMS			4
+#define HB_CONVAR_DEFAULT_DISTANCE	5
+#define HB_CONVAR_TOGGLE			6
+
+enum struct BeaconPlayers
 {
-	{null, "20.0,30.0,40.0,60.0", "float"},
-	{null, "5.0,8.0,10.0,15.0", "float"},
-	{null, "2.0,5.0,10.0,15.0", "float"},
-	{null, "1,2,3,4,5", "int"},
-	{null, "1,2,3,4,5", "int"},
-	{null, "100.0,200.0,400.0,500.0", "float"}
-};
+	bool hasHealBeacon;
+	bool hasNeon;
+	int color[4];
+	float distance;
+	int neonEntity;
+	
+	void SetColor(int setColor[4])
+	{
+		this.color[0] = setColor[0];
+		this.color[1] = setColor[1];
+		this.color[2] = setColor[2];
+		this.color[3] = setColor[3];
+	}
+	
+	void ResetColor()
+	{
+		this.color[0] = g_ColorDefault[0];
+		this.color[1] = g_ColorDefault[1];
+		this.color[2] = g_ColorDefault[2];
+		this.color[3] = g_ColorDefault[3];
+	}
+	
+	void ResetValues()
+	{
+		this.hasHealBeacon = false;
+		this.ResetColor();
+		this.distance = THIS_MODE_INFO.cvarInfo[HB_CONVAR_DEFAULT_DISTANCE].cvar.FloatValue;
+		this.neonEntity = -1;
+	}
+}
+
+BeaconPlayers g_BeaconPlayersData[MAXPLAYERS + 1];
 
 /* Called in OnPluginStart */
-stock void PluginStart_HealBeacon()
+stock void OnPluginStart_HealBeacon()
 {
+	THIS_MODE_INFO.name = "HealBeacon";
+	THIS_MODE_INFO.tag = "{gold}[FunModes-HealBeacon]{lightgreen}";
+
 	/* ADMIN COMMANDS */
-	RegAdminCmd("sm_fm_healbeacon", Cmd_HealBeacon, ADMFLAG_CONVARS, "Enable/Disable Healbeacon");
-	RegAdminCmd("sm_healbeacon", Cmd_HealBeaconMenu, ADMFLAG_CONVARS, "Shows healbeacon menu");
+	RegAdminCmd("sm_fm_healbeacon", Cmd_HealBeaconToggle, ADMFLAG_CONVARS, "Enable/Disable Healbeacon");
+	RegAdminCmd("sm_healbeacon", Cmd_HealBeaconSettings, ADMFLAG_CONVARS, "Shows healbeacon menu");
 	RegAdminCmd("sm_beacon_distance", Cmd_HealBeaconDistance, ADMFLAG_CONVARS, "Change beacon distance");
 	RegAdminCmd("sm_replacebeacon", Cmd_HealBeaconReplace, ADMFLAG_BAN, "Replace an already heal beaconed player with another one");
 	RegAdminCmd("sm_addnewbeacon", Cmd_HealBeaconAddNew, ADMFLAG_BAN, "Add a new heal beaconed player");
 	RegAdminCmd("sm_removebeacon", Cmd_HealBeaconRemove, ADMFLAG_BAN, "Remove heal beacon player");
 	RegConsoleCmd("sm_checkdistance", Cmd_HealBeaconCheckDistance, "...");
 
-	/* CONVARS HANDLES */
-	g_cvHealBeaconTimer = CreateConVar("sm_beacon_timer", "20.0", "The time that will start picking random players at round start");
-	g_cvAlertTimer = CreateConVar("sm_beacon_alert_timer", "10", "How much time in seconds the damage will start being applied from heal beacon as an alert for the other humans");
-	g_cvHealBeaconDamage = CreateConVar("sm_beacon_damage", "5", "The damage that the heal beacon will give");
-	g_cvHealBeaconHeal = CreateConVar("sm_beacon_heal", "1", "How much heal beacon should heal the players in 1 second");
-	g_cvRandoms = CreateConVar("sm_healbeacon_randoms", "2", "How many random players should get the heal beacon");
-	g_cvDefaultDistance = CreateConVar("sm_healbeacon_distance", "400.0", "Default distance of beacon to give");
-	
-	HealBeacon_SetCvarsInfo();
+	/* CONVARS */
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_BEACON_TIMER,
+		"sm_beacon_timer", "20.0", "The time that will start picking random players at round start",
+		("20.0,30.0,40.0,60.0"), "float"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_ALERT_TIMER,
+		"sm_beacon_alert_timer", "10.0", "How much time in seconds the damage will start being applied from heal beacon as an alert for the other humans",
+		("5.0,8.0,10.0,15.0"), "float"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_BEACON_DAMAGE,
+		"sm_beacon_damage", "5.0", "The damage that the heal beacon will give",
+		("2.0,5.0,8.0,10.0,15.0"), "float"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_BEACON_HEAL,
+		"sm_beacon_heal", "1", "How much heal beacon should heal the players in 1 second",
+		("1,2,3,4,5,10"), "int"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_RANDOMS,
+		"sm_healbeacon_randoms", "2", "How many random players should get the heal beacon",
+		("1,2,3,4,5,10"), "int"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_DEFAULT_DISTANCE,
+		"sm_healbeacon_distance", "400.0", "Default distance of beacon to give",
+		("100.0,200.0,400.0,500.0"), "float"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, HB_CONVAR_TOGGLE,
+		"sm_healbeacon_enable", "1", "Enable/Disable HealBeacon mode.",
+		("0,1"), "bool"
+	);
+
+	THIS_MODE_INFO.enabled = true;
+
+	THIS_MODE_INFO.index = g_arModesInfo.Length;
+	g_arModesInfo.PushArray(THIS_MODE_INFO);
+
+	THIS_MODE_INFO.cvarInfo[HB_CONVAR_TOGGLE].cvar.AddChangeHook(OnHBModeToggle);
 }
 
-void HealBeacon_SetCvarsInfo()
+void OnHBModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	ConVar cvars[sizeof(g_cvInfoHealBeacon)];
-	cvars[0] = g_cvHealBeaconTimer;
-	cvars[1] = g_cvAlertTimer;
-	cvars[2] = g_cvHealBeaconDamage;
-	cvars[3] = g_cvHealBeaconHeal;
-	cvars[4] = g_cvRandoms;
-	cvars[5] = g_cvDefaultDistance;
-
-	for (int i = 0; i < sizeof(g_cvInfoHealBeacon); i++)
-		g_cvInfoHealBeacon[i].cvar = cvars[i];
+	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
+	if (THIS_MODE_INFO.isOn)
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 }
 
-stock void RoundStart_HealBeacon()
+stock void OnMapStart_HealBeacon() {}
+stock void OnMapEnd_HealBeacon()
+{
+	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		g_hBeaconTimer[i] = null;
+	}
+	g_hRoundStart_Timer[0] = null;
+	g_hRoundStart_Timer[1] = null;
+ 	g_hDamageTimer = null;
+	g_hHealTimer = null;
+}
+
+stock void OnClientPutInServer_HealBeacon(int client)
+{
+	#pragma unused client
+}
+
+stock void OnClientDisconnect_HealBeacon(int client)
+{
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
+	if(!g_BeaconPlayersData[client].hasHealBeacon)
+	{
+		delete g_hBeaconTimer[client];
+		g_BeaconPlayersData[client].ResetValues();
+		return;
+	}
+
+	RemoveBeacon(-1, client);
+	CPrintToChatAll("%s {olive}%N {lightgreen}disconnected with HealBeacon.", THIS_MODE_INFO.tag, client);
+}
+
+stock void ZR_OnClientInfected_HealBeacon(int client)
+{
+	#pragma unused client
+}
+
+stock void Event_RoundStart_HealBeacon()
 {
 	/* DELETE TIMER HANDLES SO WE DONT GET ERRORS */
 	HealBeacon_DeleteAllTimers();
@@ -59,50 +192,46 @@ stock void RoundStart_HealBeacon()
 
 	g_aHBPlayers.Clear();
 
-	if(!g_bIsHealBeaconOn)
+	if(!THIS_MODE_INFO.isOn)
 		return;
 
 	/* RESET COUNTER */
 	g_iCounter = 0;
 
 	/* LETS CREATE THE FIRST ROUND START TIMER */
-	g_hRoundStart_Timer[0] = CreateTimer(g_cvHealBeaconTimer.FloatValue, RoundStart_Timer);
+	g_hRoundStart_Timer[0] = CreateTimer(THIS_MODE_INFO.cvarInfo[HB_CONVAR_BEACON_TIMER].cvar.FloatValue, RoundStart_Timer, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
-stock void PlayerDeath_HealBeacon(int userid)
+stock void Event_RoundEnd_HealBeacon() {}
+stock void Event_PlayerSpawn_HealBeacon(int client)
 {
-	int client = GetClientOfUserId(userid);
-	if(!IsValidClient(client) || !g_BeaconPlayersData[client].hasHealBeacon)
+	#pragma unused client
+}
+
+stock void Event_PlayerDeath_HealBeacon(int client)
+{
+	if(!THIS_MODE_INFO.isOn || !g_BeaconPlayersData[client].hasHealBeacon)
 		return;
 
 	RemoveBeacon(-1, client);
-	CPrintToChatAll("%s {olive}%N {lightgreen}died with HealBeacon.", HealBeacon_Tag, client);
+	CPrintToChatAll("%s {olive}%N {lightgreen}died with HealBeacon.", THIS_MODE_INFO.tag, client);
 }
 
-stock void PlayerTeam_HealBeacon(int userid, int team)
+stock void Event_PlayerTeam_HealBeacon(Event event)
 {
-	int client = GetClientOfUserId(userid);
-	if(!IsValidClient(client) || !g_BeaconPlayersData[client].hasHealBeacon)
+	if(!THIS_MODE_INFO.isOn)
+		return;
+		
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (!client || !g_BeaconPlayersData[client].hasHealBeacon)
 		return;
 
+	int team = event.GetInt("team");
 	if(team == CS_TEAM_SPECTATOR || team == CS_TEAM_NONE)
 	{
 		RemoveBeacon(-1, client);
-		CPrintToChatAll("%s {olive}%N {lightgreen}moved to spectator team with HealBeacon.", HealBeacon_Tag, client);
+		CPrintToChatAll("%s {olive}%N {lightgreen}moved to spectator team with HealBeacon.", THIS_MODE_INFO.tag, client);
 	}
-}
-
-stock void ClientDisconnect_HealBeacon(int client)
-{
-	if(!g_BeaconPlayersData[client].hasHealBeacon)
-	{
-		delete g_hBeaconTimer[client];
-		g_BeaconPlayersData[client].ResetValues();
-		return;
-	}
-
-	RemoveBeacon(-1, client);
-	CPrintToChatAll("%s {olive}%N {lightgreen}disconnected with HealBeacon.", HealBeacon_Tag, client);
 }
 
 Action RoundStart_Timer(Handle timer)
@@ -110,20 +239,20 @@ Action RoundStart_Timer(Handle timer)
 	g_hRoundStart_Timer[0] = null;
 
 	/* Let's now pick the random players */
-	for(int i = 0; i < g_cvRandoms.IntValue; i++)
+	for(int i = 0; i < THIS_MODE_INFO.cvarInfo[HB_CONVAR_RANDOMS].cvar.IntValue; i++)
 	{
 		GetRandomPlayer();
 	}
 
 	/* Delete the previous timer handler if found so we dont assign a new CreateTimer over the old one */
 	delete g_hRoundStart_Timer[1];
-	g_hRoundStart_Timer[1] = CreateTimer(1.0, RoundStart_CountTimer, _, TIMER_REPEAT);
+	g_hRoundStart_Timer[1] = CreateTimer(1.0, RoundStart_CountTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Stop;
 }
 
 Action RoundStart_CountTimer(Handle timer)
 {
-	int alertTime = g_cvAlertTimer.IntValue;
+	int alertTime = THIS_MODE_INFO.cvarInfo[HB_CONVAR_ALERT_TIMER].cvar.IntValue;
 
 	if(g_iCounter >= alertTime)
 	{
@@ -138,9 +267,9 @@ Action RoundStart_CountTimer(Handle timer)
 		if(!IsClientInGame(i))
 			continue;
 
-		char sMessage[256];
-		FormatEx(sMessage, sizeof(sMessage), "%T", "HealBeacon_Alert", i, (alertTime - g_iCounter));
-		SendHudText(i, sMessage);
+		char message[256];
+		FormatEx(message, sizeof(message), "%T", "HealBeacon_Alert", i, (alertTime - g_iCounter));
+		SendHudText(i, message);
 	}
 
 	g_iCounter++;
@@ -154,7 +283,7 @@ stock void GetRandomPlayer()
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		if(!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+		if(!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
 			continue;
 
 		/* if client is already heal beaconed then dont include them in */
@@ -164,7 +293,7 @@ stock void GetRandomPlayer()
 		clientsCount[humansCount++] = i;
 	}
 
-	if(humansCount <= 0 || humansCount < g_cvRandoms.IntValue)
+	if(humansCount <= 0 || humansCount < THIS_MODE_INFO.cvarInfo[HB_CONVAR_RANDOMS].cvar.IntValue)
 		return;
 
 	int random = clientsCount[GetRandomInt(0, (humansCount - 1))];
@@ -173,19 +302,19 @@ stock void GetRandomPlayer()
 
 	/* Lets now apply healbeacon to the choosen one */
 	SetHealBeaconToClient(random);
-	CPrintToChatAll("%s %T", HealBeacon_Tag, "HealBeacon_AddAnnounce", random, random);
+	CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_AddAnnounce", random, random);
 }
 
 stock void SetHealBeaconToClient(int client)
 {
 	/* Lets save the healbeacon player data they are needed */
 	g_BeaconPlayersData[client].hasHealBeacon = true;
-	g_BeaconPlayersData[client].distance = g_cvDefaultDistance.FloatValue;
+	g_BeaconPlayersData[client].distance = THIS_MODE_INFO.cvarInfo[HB_CONVAR_DEFAULT_DISTANCE].cvar.FloatValue;
 	g_BeaconPlayersData[client].ResetColor();
 
 	/* BEACON THE PLAYER */
 	delete g_hBeaconTimer[client];
-	g_hBeaconTimer[client] = CreateTimer(0.1, HealBeacon_BeaconTimer, GetClientUserId(client), TIMER_REPEAT);
+	g_hBeaconTimer[client] = CreateTimer(0.1, HealBeacon_BeaconTimer, GetClientUserId(client), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 
 	/* Lets now push client indexes to the arraylist */
 	g_aHBPlayers.Push(client);
@@ -195,19 +324,18 @@ stock void HealBeacon_Setup()
 {
 	/* Lets create the damage timer and delete the handle first so we dont get problems */
 	delete g_hDamageTimer;
-	g_hDamageTimer = CreateTimer(0.7, HealBeacon_DamageTimer, _, TIMER_REPEAT);
+	g_hDamageTimer = CreateTimer(0.7, HealBeacon_DamageTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 
 	/* Lets create the heal timer and delete the handle first so we dont get problems */
 	delete g_hHealTimer;
-	g_hHealTimer = CreateTimer(1.0, HealBeacon_HealTimer, _, TIMER_REPEAT);
+	g_hHealTimer = CreateTimer(1.0, HealBeacon_HealTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 Action HealBeacon_BeaconTimer(Handle timer, int userid)
 {
 	int client = GetClientOfUserId(userid);
-	if(!IsValidClient(client))
+	if(!client)
 	{
-		g_hBeaconTimer[client] = null;
 		return Plugin_Stop;
 	}
 
@@ -217,7 +345,7 @@ Action HealBeacon_BeaconTimer(Handle timer, int userid)
 		return Plugin_Stop;
 	}
 
-	BeaconPlayer(client, BeaconMode_HealBeacon);
+	BeaconPlayer(client, 0, g_BeaconPlayersData[client].distance, g_BeaconPlayersData[client].color);
 	return Plugin_Continue;
 }
 
@@ -232,10 +360,10 @@ Action HealBeacon_DamageTimer(Handle timer)
 	{
 		for(int i = 1; i <= MaxClients; i++)
 		{
-			if(!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+			if(!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
 				continue;
 
-			SDKHooks_TakeDamage(i, 0, 0, g_cvHealBeaconDamage.FloatValue);
+			SDKHooks_TakeDamage(i, 0, 0, THIS_MODE_INFO.cvarInfo[HB_CONVAR_BEACON_DAMAGE].cvar.FloatValue);
 		}
 
 		return Plugin_Handled;
@@ -243,7 +371,7 @@ Action HealBeacon_DamageTimer(Handle timer)
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		if(!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+		if(!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
 			continue;
 		
 		/* if client is healbeaconed then continue the loop and ignore that client */
@@ -280,7 +408,7 @@ stock void HealBeacon_DealDamage(int client)
 	/* if player is far then do damage and warn them */
 	if(isFar)
 	{
-		SDKHooks_TakeDamage(client, 0, 0, g_cvHealBeaconDamage.FloatValue);
+		SDKHooks_TakeDamage(client, 0, 0, THIS_MODE_INFO.cvarInfo[HB_CONVAR_BEACON_DAMAGE].cvar.FloatValue);
 		char sMessage[256];
 		FormatEx(sMessage, sizeof(sMessage), "%T", "HealBeacon_Damage", client);
 		SendHudText(client, sMessage, true);
@@ -296,7 +424,7 @@ Action HealBeacon_HealTimer(Handle timer)
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		if(!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+		if(!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
 			continue;
 
 		HealBeacon_DealHeal(i);
@@ -316,7 +444,7 @@ stock void HealBeacon_DealHeal(int client)
 		/* WE SHOULD ALWAYS CHECK IF MAXHEALTH IS MORE THAN PLAYERS HEALTH summing with the extra health */
 		if((health) < maxHealth)
 		{
-			int newHealth = (health + g_cvHealBeaconHeal.IntValue);
+			int newHealth = (health + THIS_MODE_INFO.cvarInfo[HB_CONVAR_BEACON_HEAL].cvar.IntValue);
 
 			if(newHealth == maxHealth)
 				newHealth = maxHealth;
@@ -343,7 +471,7 @@ stock void HealBeacon_DealHeal(int client)
 			/* WE SHOULD ALWAYS CHECK IF MAXHEALTH IS MORE THAN PLAYERS HEALTH summing with the extra health */
 			if((health) < maxHealth)
 			{
-				int newHealth = (health + g_cvHealBeaconHeal.IntValue);
+				int newHealth = (health + THIS_MODE_INFO.cvarInfo[HB_CONVAR_BEACON_HEAL].cvar.IntValue);
 
 				if(newHealth == maxHealth)
 					newHealth = maxHealth;
@@ -369,9 +497,6 @@ stock void HealBeacon_DeleteAllTimers()
 
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		if(!IsValidClient(i))
-			continue;
-
 		delete g_hBeaconTimer[i];
 	}
 }
@@ -429,7 +554,7 @@ stock void AddNewBeacon(int client, int target)
 	SetHealBeaconToClient(target);
 
 	/* ANNOUNCE THAT THIS TARGET IS NOW A HEALBEACON! */
-	CPrintToChatAll("%s %T", HealBeacon_Tag, "HealBeacon_AddAnnounce", client, target);
+	CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_AddAnnounce", client, target);
 }
 
 stock void RemoveBeacon(int client, int target)
@@ -457,7 +582,7 @@ stock void RemoveBeacon(int client, int target)
 	/* ANNOUNCE THAT THIS DUDE HEALBEACON IS REMOVED */
 	if(client > 0)
 	{
-		CPrintToChatAll("%s %T", HealBeacon_Tag, "HealBeacon_RemoveAnnounce", client, client, target);
+		CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_RemoveAnnounce", client, client, target);
 		LogAction(client, target, "[FunModes-HealBeacon] \"%L\" removed HealBeacon from \"%L\"", client, target);
 	}
 }
@@ -473,7 +598,7 @@ stock void ReplaceBeacon(int client, int random, int target)
 		
 		for(int i = 1; i <= MaxClients; i++)
 		{
-			if(!IsValidClient(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+			if(!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
 				continue;
 
 			if(g_BeaconPlayersData[i].hasHealBeacon)
@@ -493,7 +618,7 @@ stock void ReplaceBeacon(int client, int random, int target)
 		SetHealBeaconToClient(newRandom);
 
 		/* ANNOUNCE THAT THIS DUDE IS A HEALBEACON */
-		CPrintToChatAll("%s %T", HealBeacon_Tag, "HealBeacon_RepickAnnounce", client, client, newRandom, random);
+		CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_RepickAnnounce", client, client, newRandom, random);
 		return;
 	}
 
@@ -502,32 +627,30 @@ stock void ReplaceBeacon(int client, int random, int target)
 	SetHealBeaconToClient(target);
 
 	/* ANNOUNCE THAT THIS DUDE IS A HEALBEACON */
-	CPrintToChatAll("%s %T", HealBeacon_Tag, "HealBeacon_ReplaceAnnounce", client, client, target, random);
+	CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_ReplaceAnnounce", client, client, target, random);
 }
 
 /*---------------------*/
 /* COMMANDS CALLBACKS */
 /*---------------------*/
 
-Action Cmd_HealBeacon(int client, int args)
+Action Cmd_HealBeaconToggle(int client, int args)
 {
-	if(g_bIsHealBeaconOn)
+	if(THIS_MODE_INFO.isOn)
 	{
-		g_bIsHealBeaconOn = false;
+		THIS_MODE_INFO.isOn = false;
 		delete g_aHBPlayers;
 
 		HealBeacon_DeleteAllTimers();
 	
 		if(!client)
-			ReplyToCommand(client, "%s HealBeacon Mode is now OFF!", HealBeacon_Tag);
+			ReplyToCommand(client, "%s HealBeacon Mode is now OFF!", THIS_MODE_INFO.tag);
 		else
-			CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
-
-		return Plugin_Handled;
+			CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 	}
 	else
 	{
-		g_bIsHealBeaconOn = true;
+		THIS_MODE_INFO.isOn = true;
 	
 		/* Event hooks */
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
@@ -538,22 +661,23 @@ Action Cmd_HealBeacon(int client, int args)
 		delete g_aHBPlayers;
 		g_aHBPlayers = new ArrayList(ByteCountToCells(32));
 		if(!client)
-			ReplyToCommand(client, "%s HealBeacon Mode is now ON!", HealBeacon_Tag);
+			ReplyToCommand(client, "%s HealBeacon Mode is now ON!", THIS_MODE_INFO.tag);
 		else
-			CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Enabled", client);
-
-		return Plugin_Handled;
+			CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Enabled", client);
 	}
+
+	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
+	return Plugin_Handled;
 }
 
-Action Cmd_HealBeaconMenu(int client, int args)
+Action Cmd_HealBeaconSettings(int client, int args)
 {
 	if(!client)
 		return Plugin_Handled;
 
-	if(!g_bIsHealBeaconOn)
+	if (!THIS_MODE_INFO.isOn)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 		return Plugin_Handled;
 	}
 
@@ -563,15 +687,15 @@ Action Cmd_HealBeaconMenu(int client, int args)
 
 Action Cmd_HealBeaconDistance(int client, int args)
 {
-	if(!g_bIsHealBeaconOn)
+	if(!THIS_MODE_INFO.isOn)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 		return Plugin_Handled;
 	}
 
 	if(args < 2)
 	{
-		CReplyToCommand(client, "%s Usage: sm_beacon_distance <healBeacon Player> <distance>", HealBeacon_Tag);
+		CReplyToCommand(client, "%s Usage: sm_beacon_distance <healBeacon Player> <distance>", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -588,34 +712,34 @@ Action Cmd_HealBeaconDistance(int client, int args)
 
 	if(!g_BeaconPlayersData[target].hasHealBeacon)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_PlayerIsNot", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_PlayerIsNot", client);
 		return Plugin_Handled;
 	}
 
 	float distance;
 	if(!StringToFloatEx(arg2, distance))
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_InvalidDistnace", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_InvalidDistnace", client);
 		return Plugin_Handled;
 	}
 
 	g_BeaconPlayersData[target].distance = distance;
-	CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_DistanceChange", client, target, distance);
+	CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_DistanceChange", client, target, distance);
 	LogAction(client, target, "[FunModes-HealBeacon] \"%L\" changed Beacon Distance of \"%L\" to \"%d\"", client, target, distance);
 	return Plugin_Handled;
 }
 
 Action Cmd_HealBeaconReplace(int client, int args)
 {
-	if(!g_bIsHealBeaconOn)
+	if(!THIS_MODE_INFO.isOn)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 		return Plugin_Handled;
 	}
 
 	if(args < 2)
 	{
-		CReplyToCommand(client, "%s Usage: sm_replacebeacon <healBeacon Player> <player>", HealBeacon_Tag);
+		CReplyToCommand(client, "%s Usage: sm_replacebeacon <healBeacon Player> <player>", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -634,13 +758,13 @@ Action Cmd_HealBeaconReplace(int client, int args)
 
 	if(!g_BeaconPlayersData[healBeaconTarget].hasHealBeacon)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_PlayerIsNot", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_PlayerIsNot", client);
 		return Plugin_Handled;
 	}
 
 	if(g_BeaconPlayersData[target].hasHealBeacon)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_PlayerIs", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_PlayerIs", client);
 		return Plugin_Handled;
 	}
 
@@ -650,15 +774,15 @@ Action Cmd_HealBeaconReplace(int client, int args)
 
 Action Cmd_HealBeaconAddNew(int client, int args)
 {
-	if(!g_bIsHealBeaconOn)
+	if(!THIS_MODE_INFO.isOn)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 		return Plugin_Handled;
 	}
 
 	if(args < 1)
 	{
-		CReplyToCommand(client, "%s Usage: sm_addnewbeacon <player>", HealBeacon_Tag);
+		CReplyToCommand(client, "%s Usage: sm_addnewbeacon <player>", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -674,7 +798,7 @@ Action Cmd_HealBeaconAddNew(int client, int args)
 
 	if(g_BeaconPlayersData[target].hasHealBeacon)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_PlayerIs", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_PlayerIs", client);
 		return Plugin_Handled;
 	}
 
@@ -685,15 +809,15 @@ Action Cmd_HealBeaconAddNew(int client, int args)
 
 Action Cmd_HealBeaconRemove(int client, int args)
 {
-	if(!g_bIsHealBeaconOn)
+	if(!THIS_MODE_INFO.isOn)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_Disabled", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_Disabled", client);
 		return Plugin_Handled;
 	}
 
 	if(args < 1)
 	{
-		CReplyToCommand(client, "%s Usage: sm_removebeacon <player>", HealBeacon_Tag);
+		CReplyToCommand(client, "%s Usage: sm_removebeacon <player>", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -709,7 +833,7 @@ Action Cmd_HealBeaconRemove(int client, int args)
 
 	if(!g_BeaconPlayersData[target].hasHealBeacon)
 	{
-		CReplyToCommand(client, "%s %T", HealBeacon_Tag, "HealBeacon_PlayerIsNot", client);
+		CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "HealBeacon_PlayerIsNot", client);
 		return Plugin_Handled;
 	}
 
@@ -726,7 +850,7 @@ Action Cmd_HealBeaconCheckDistance(int client, int args)
 
 	if(args < 1)
 	{
-		CReplyToCommand(client, "%s Usage: sm_checkdistance <player>", HealBeacon_Tag);
+		CReplyToCommand(client, "%s Usage: sm_checkdistance <player>", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -747,6 +871,8 @@ Action Cmd_HealBeaconCheckDistance(int client, int args)
 	}
 
 	float distance = GetDistanceBetween(client, target);
-	CReplyToCommand(client, "%s Distance between you and %N is: {olive}%.2f.", HealBeacon_Tag, target, distance);
+	CReplyToCommand(client, "%s Distance between you and %N is: {olive}%.2f.", THIS_MODE_INFO.tag, target, distance);
 	return Plugin_Handled;
 }
+
+#include "Fun_Modes/HealBeacon_Menus.sp"
