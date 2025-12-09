@@ -16,7 +16,7 @@ ModeInfo g_SampleInfo;
 
 #define SAMPLE_CONVAR_TOGGLE 0
 
-stock void OnPluginStart()
+stock void OnPluginStart_Sample()
 {
 	THIS_MODE_INFO.name = "Sample";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-Sample]{lightgreen}";

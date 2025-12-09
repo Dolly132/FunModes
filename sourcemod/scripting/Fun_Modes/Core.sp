@@ -44,6 +44,12 @@ int g_iPreviousModeIndex[MAXPLAYERS+1];
 
 #define Beacon_Sound        "buttons/blip1.wav"
 
+#define FFADE_IN       (0x0001) // Fade in
+#define FFADE_OUT      (0x0002) // Fade out
+#define FFADE_MODULATE (0x0004) // Modulate (Don't blend)
+#define FFADE_STAYOUT  (0x0008) // Ignores the duration, stays faded out until a new fade message is received
+#define FFADE_PURGE    (0x0010) // Purges all other fades, replacing them with this one
+
 /* Mode Management structs */
 #define MAX_MODES_NUM 32
 #define MAX_CVARS_NUM 10
@@ -104,7 +110,9 @@ FM_Color g_ColorsList[] =
 		CALL_MODE_FUNC(%1, Fog); \
 		CALL_MODE_FUNC(%1, RLGL); \
 		CALL_MODE_FUNC(%1, DoubleJump); \ 
-		CALL_MODE_FUNC(%1, DamageGame)
+		CALL_MODE_FUNC(%1, DamageGame); \
+		CALL_MODE_FUNC(%1, BlindMode); \
+		CALL_MODE_FUNC(%1, SlapMode)
 
 #define CALL_MODE_FUNC_PARAM(%1,%2,%3) %1_%2(%3)
 #define DECLARE_FM_FORWARD_PARAM(%1,%2) \
@@ -114,7 +122,8 @@ FM_Color g_ColorsList[] =
 		CALL_MODE_FUNC_PARAM(%1, Fog, %2); \
 		CALL_MODE_FUNC_PARAM(%1, RLGL, %2); \
 		CALL_MODE_FUNC_PARAM(%1, DoubleJump, %2); \
-		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2) 
+		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2); \
+		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2)
 
 /*
 these commented macros are not used for now
@@ -157,3 +166,5 @@ these commented macros are not used for now
 #include "Fun_Modes/DoubleJump.sp"
 #include "Fun_Modes/InvertedControls.sp"
 #include "Fun_Modes/DamageGame.sp"
+#include "Fun_Modes/BlindMode.sp"
+#include "Fun_Modes/SlapMode.sp"

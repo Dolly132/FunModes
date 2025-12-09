@@ -6,12 +6,6 @@ ModeInfo g_RLGLInfo;
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_RLGLInfo
 
-#define FFADE_IN       (0x0001) // Fade in
-#define FFADE_OUT      (0x0002) // Fade out
-#define FFADE_MODULATE (0x0004) // Modulate (Don't blend)
-#define FFADE_STAYOUT  (0x0008) // Ignores the duration, stays faded out until a new fade message is received
-#define FFADE_PURGE    (0x0010) // Purges all other fades, replacing them with this one
-
 bool g_bEnableDetecting;
 
 char countDownPath[PLATFORM_MAX_PATH];
