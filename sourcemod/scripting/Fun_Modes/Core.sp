@@ -90,6 +90,13 @@ FM_Color g_ColorsList[] =
 	{ "Gold", "255 215 0" }
 };
 
+enum WeaponAmmoGrenadeType
+{
+	GrenadeType_HEGrenade           = 11,   /** CSS - HEGrenade slot */
+	GrenadeType_Flashbang           = 12,   /** CSS - Flashbang slot. */
+	GrenadeType_Smokegrenade        = 13,   /** CSS - Smokegrenade slot. */
+};
+
 /* 
 - New FunModes Update
 	* The plugin will now use macros to define the main functions and forwards
@@ -112,7 +119,8 @@ FM_Color g_ColorsList[] =
 		CALL_MODE_FUNC(%1, DoubleJump); \ 
 		CALL_MODE_FUNC(%1, DamageGame); \
 		CALL_MODE_FUNC(%1, BlindMode); \
-		CALL_MODE_FUNC(%1, SlapMode)
+		CALL_MODE_FUNC(%1, SlapMode); \
+		CALL_MODE_FUNC(%1, MakoKickers)
 
 #define CALL_MODE_FUNC_PARAM(%1,%2,%3) %1_%2(%3)
 #define DECLARE_FM_FORWARD_PARAM(%1,%2) \
@@ -123,7 +131,8 @@ FM_Color g_ColorsList[] =
 		CALL_MODE_FUNC_PARAM(%1, RLGL, %2); \
 		CALL_MODE_FUNC_PARAM(%1, DoubleJump, %2); \
 		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2); \
-		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2)
+		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
+		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2)
 
 /*
 these commented macros are not used for now
@@ -168,3 +177,4 @@ these commented macros are not used for now
 #include "Fun_Modes/DamageGame.sp"
 #include "Fun_Modes/BlindMode.sp"
 #include "Fun_Modes/SlapMode.sp"
+#include "Fun_Modes/MakoKickers.sp"

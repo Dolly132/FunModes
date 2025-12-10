@@ -201,6 +201,16 @@ stock void BeaconPlayer(int client, int mode, float distance = 0.0, int color[4]
 	}
 }
 
+void GiveGrenadesToClient(int client, WeaponAmmoGrenadeType type, int amount)
+{
+	int ammo = FindSendPropInfo("CBasePlayer", "m_iAmmo");
+	if (ammo != -1)
+	{
+		int grenadesCount = GetEntData(client, ammo + (view_as<int>(type) * 4));
+		SetEntData(client, ammo + (view_as<int>(type) * 4), grenadesCount + amount, _, true);
+	}
+}
+
 Action Cmd_FunModes(int client, int args)
 {
 	if (!client)

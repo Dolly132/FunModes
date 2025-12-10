@@ -277,23 +277,13 @@ Action Timer_BlindMode(Handle timer)
 			zombie = zombies[GetRandomInt(0, zombiesCount - 1)];
 			
 		g_bHasFlash[zombie] = true;
-		GiveFlashBang(zombie);
+		GiveGrenadesToClient(zombie, GrenadeType_Flashbang, 1);
 		CPrintToChat(zombie, "%s You have been granted a FlashBang!!!\nBlind some humans.", THIS_MODE_INFO.tag);
 		enough++;
 	} while (enough <= neededZombies);
 	
 	CPrintToChatAll("%s %d zombies have been granted a Blind grenade (Flashbang), watch out humans!", THIS_MODE_INFO.tag, neededZombies);
 	return Plugin_Continue;
-}
-
-void GiveFlashBang(int client)
-{
-	int ammo = FindSendPropInfo("CBasePlayer", "m_iAmmo");
-	if (ammo != -1)
-	{
-		int grenadesCount = GetEntData(client, ammo + (12 * 4));
-		SetEntData(client, ammo + (12 * 4), grenadesCount + 1, _, true);
-	}
 }
 
 public void OnEntityCreated(int entity, const char[] classname)
