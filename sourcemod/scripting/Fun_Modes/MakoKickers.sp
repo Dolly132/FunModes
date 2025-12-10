@@ -45,7 +45,8 @@ static char g_ConVarsToChange[][][] =
 	{ "sm_pvis_minplayers_enable", "-1" },
 	{ "sv_accelerate", "-5" },
 	{ "zr_greneffect_flash_light", "0" },
-	{ "zr_weapons_zmarket", "0"}
+	{ "zr_weapons_zmarket", "0" },
+    { "zr_weapons_zmarket_rebuy", "0" }
 };
 
 static char g_ConVarsOriginalValues[sizeof(g_ConVarsToChange)][10];
