@@ -34,7 +34,7 @@ stock void OnPluginStart_SlapMode()
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, SLAPMODE_CONVAR_TIMER_INTERVAL,
 		"sm_slapmode_time_interval", "20.0", "Every how many seconds to keep slapping a random human?",
-		("5.0,10.0,15.0,20.0,30.0"), "float"
+		("15.0,20.0,30.0,40.0,60.0"), "float"
 	);
 	
 	DECLARE_FM_CVAR(

@@ -2,8 +2,8 @@
     (). FunModes V2:
         
     @file           Sample.sp
-    @Usage         	This is just a sample mode, it has the template that you need to follow when you want to create a new mode
-    				This file is not included within the main plugin
+    @Usage         	
+    				
 */
 
 #pragma semicolon 1

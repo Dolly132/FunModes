@@ -137,7 +137,7 @@ public Action Cmd_BlindModeToggle(int client, int args)
 	/* You can change whatever you want here */
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
 	
-	CPrintToChatAll("%s BlindMode Mode is now %s!", THIS_MODE_INFO.isOn ? "On" : "Off");
+	CPrintToChatAll("%s BlindMode Mode is now %s!", THIS_MODE_INFO.tag, THIS_MODE_INFO.isOn ? "On" : "Off");
 	
 	if (THIS_MODE_INFO.isOn)
 	{
@@ -147,7 +147,7 @@ public Action Cmd_BlindModeToggle(int client, int args)
 		float interval = THIS_MODE_INFO.cvarInfo[BLINDMODE_CONVAR_TIMER_INTERVAL].cvar.FloatValue;
 		
 		CPrintToChatAll("%s Zombies will get a {olive}flashbang {lightgreen}that can blind humans.", THIS_MODE_INFO.tag);
-		CPrintToChatAll("%s %d\% of the zombies team will get the {olive}flashbang {lightgreen}every %.2f seconds", THIS_MODE_INFO.tag,
+		CPrintToChatAll("%s %d%% of the zombies team will get the {olive}flashbang {lightgreen}every %.2f seconds", THIS_MODE_INFO.tag,
 																	THIS_MODE_INFO.cvarInfo[BLINDMODE_CONVAR_PERCENTAGE].cvar.IntValue,
 																	interval
 		);
@@ -205,10 +205,7 @@ int Menu_BlindModeSettings(Menu menu, MenuAction action, int param1, int param2)
 void ApplyBlind(int client)
 {
 	int color[4];
-	color[0] = GetRandomInt(45, 255);
-	color[1] = GetRandomInt(45, 255);
-	color[2] = GetRandomInt(45, 255);
-	color[3] = 245;
+	color[3] = 255;
 
 	int flags = FFADE_OUT;
 	
@@ -277,7 +274,9 @@ Action Timer_BlindMode(Handle timer)
 			zombie = zombies[GetRandomInt(0, zombiesCount - 1)];
 			
 		g_bHasFlash[zombie] = true;
-		GiveGrenadesToClient(zombie, GrenadeType_Flashbang, 1);
+		int entity = GivePlayerItem(zombie, "weapon_flashbang");
+		EquipPlayerWeapon(zombie, entity);
+		SetEntData(zombie, FindSendPropInfo("CBasePlayer", "m_iAmmo") + (view_as<int>(GrenadeType_Flashbang) * 4), 1, _, true);
 		CPrintToChat(zombie, "%s You have been granted a FlashBang!!!\nBlind some humans.", THIS_MODE_INFO.tag);
 		enough++;
 	} while (enough <= neededZombies);
@@ -297,7 +296,7 @@ Action Timer_ApplyBlind(Handle timer, int ref)
 	int entity = EntRefToEntIndex(ref);
 	if (!IsValidEntity(entity))
 		return Plugin_Stop;
-		
+	
 	int owner = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 	if (!owner)
 		return Plugin_Stop;
@@ -325,5 +324,6 @@ Action Timer_ApplyBlind(Handle timer, int ref)
 		ApplyBlind(i);
 	}
 	
+	g_bHasFlash[owner] = false;
 	return Plugin_Handled;
 }

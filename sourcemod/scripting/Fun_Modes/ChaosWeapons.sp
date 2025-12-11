@@ -206,7 +206,7 @@ void PickRandomWeapon()
 	SetAllWeaponsKnockback(THIS_MODE_INFO.cvarInfo[CHAOSWEAPONS_CONVAR_KNOCKBACK].cvar.FloatValue, index);
 	
 	char msg[255];
-	FormatEx(msg, sizeof(msg), "Only the [%s] will push the zombies for the next %d seconds!", THIS_MODE_INFO.cvarInfo[CHAOSWEAPONS_CONVAR_TIMER_INTERVAL].cvar.IntValue, g_ChaosWeaponsList[index]);
+	FormatEx(msg, sizeof(msg), "Only the [%s] will push the zombies for the next %d seconds!", g_ChaosWeaponsList[index], THIS_MODE_INFO.cvarInfo[CHAOSWEAPONS_CONVAR_TIMER_INTERVAL].cvar.IntValue);
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -236,6 +236,7 @@ void SetAllWeaponsKnockback(float kb = 0.0, int index = -1, bool firstTime = fal
 		
 		if (turnOff || (index >= 0 && i == index))
 		{
+			PrintToChatAll("Weapon: %s - Original Kb: %f", lower, g_fOriginalWeaponsKB[i]);
 			ZR_SetWeaponKnockback(lower, g_fOriginalWeaponsKB[i]);
 			continue;
 		}

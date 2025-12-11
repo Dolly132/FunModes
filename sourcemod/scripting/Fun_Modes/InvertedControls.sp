@@ -34,7 +34,9 @@ stock void OnPluginStart_IC()
 	{
 		RegAdminCmd(commands[i], Cmd_ICToggle, ADMFLAG_CONVARS, "Enable/Disable Inverted controls");
 	}
-
+	
+	RegAdminCmd("sm_ic_settings", Cmd_ICSettings, ADMFLAG_CONVARS, "Open IC Settings Menu");
+	
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, IC_CONVAR_TOGGLE,
@@ -99,7 +101,7 @@ public Action Cmd_ICToggle(int client, int args)
 {
 	if (!THIS_MODE_INFO.enabled)
 	{
-		CReplyToCommand(client, "%s Inverted Controls is currently Disabled");
+		CReplyToCommand(client, "%s Inverted Controls is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
@@ -125,8 +127,11 @@ public Action Cmd_ICToggle(int client, int args)
 }
 
 /* IC Settings */
-public void Cmd_ICSettings(int client)
+public Action Cmd_ICSettings(int client, int args)
 {
+	if (!client)
+		return Plugin_Handled;
+		
 	Menu menu = new Menu(Menu_ICSettings);
 
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
@@ -135,6 +140,8 @@ public void Cmd_ICSettings(int client)
 
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
+	
+	return Plugin_Handled;
 }
 
 int Menu_ICSettings(Menu menu, MenuAction action, int param1, int param2)

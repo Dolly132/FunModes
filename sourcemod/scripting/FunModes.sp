@@ -41,7 +41,7 @@ public void OnPluginStart()
 
 	g_cvHUDChannel = CreateConVar("sm_funmodes_hud_channel", "4", "The channel for the hud if using DynamicChannels", _, true, 0.0, true, 5.0);
 
-	g_arModesInfo = new ArrayList();
+	g_arModesInfo = new ArrayList(ByteCountToCells(256));
 	
 	DECLARE_FM_FORWARD(OnPluginStart);
 
@@ -102,6 +102,7 @@ public void ZR_OnClientInfected(int client, int attacker, bool motherInfect)
 
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
+	g_bRoundEnd = false;
 	DECLARE_FM_FORWARD(Event_RoundStart);
 }
 
@@ -224,14 +225,10 @@ Action Cmd_FunModes(int client, int args)
 		ModeInfo info;
 		g_arModesInfo.GetArray(i, info, sizeof(info));
 
-		int flags = ITEMDRAW_DEFAULT;
-		if (!info.enabled)
-			flags = ITEMDRAW_DISABLED;
-
 		char index[3];
 		IntToString(i, index, sizeof(index));
 
-		menu.AddItem(index, info.name, flags);
+		menu.AddItem(index, info.name);
 	}
 
 	menu.ExitButton = true;
@@ -297,22 +294,18 @@ int Menu_DisplayConVars(Menu menu, MenuAction action, int param1, int param2)
 			char functionName[46];
 			FormatEx(functionName, sizeof(functionName), "Cmd_%s%s", modeName, (param2 == 0) ? "Toggle" : "Settings");
 
+			CPrintToChatAll("Function name: %s", functionName);
 			Function myFunction = GetFunctionByName(null, functionName);
 
 			Call_StartFunction(null, myFunction);
 
 			Call_PushCell(param1);
-
-			if (param2 == 0)
-			{
-				Call_PushCell(0);
-				Call_Finish();
-
-				DisplayModeInfo(param1, g_iPreviousModeIndex[param1]);
-				return 0;
-			}
-
+			Call_PushCell(0);
+			
 			Call_Finish();
+			
+			if (param2 == 0)
+				DisplayModeInfo(param1, g_iPreviousModeIndex[param1]);
 		}
 	}
 
@@ -331,7 +324,7 @@ void ShowCvarsInfo(int client, ModeInfo info)
 			continue;
 
 		char index[3];
-		IntToString(info.index, index, sizeof(index));
+		IntToString(i, index, sizeof(index));
 
 		char cvarName[64];
 		info.cvarInfo[i].cvar.GetName(cvarName, sizeof(cvarName));

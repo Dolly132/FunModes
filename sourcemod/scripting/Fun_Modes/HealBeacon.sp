@@ -670,7 +670,7 @@ Action Cmd_HealBeaconToggle(int client, int args)
 	return Plugin_Handled;
 }
 
-Action Cmd_HealBeaconSettings(int client, int args)
+public Action Cmd_HealBeaconSettings(int client, int args)
 {
 	if(!client)
 		return Plugin_Handled;
