@@ -101,11 +101,11 @@ stock void OnMapEnd_VIPMode()
 
 stock void OnClientPutInServer_VIPMode(int client)
 {
-	if (g_bSDKHook_OnTageDamagePost[client])
+	if (g_bSDKHook_OnTakeDamagePost[client])
 		return;
 	
 	SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
-	g_bSDKHook_OnTageDamagePost[client] = true;
+	g_bSDKHook_OnTakeDamagePost[client] = true;
 }
 
 stock void OnClientDisconnect_VIPMode(int client)
@@ -227,6 +227,13 @@ stock void OnTakeDamagePost_VIPMode(int victim, int attacker, float damage)
 	g_bDiedFromLaser[victim] = false;
 	if (damage > GetClientHealth(victim))
 		g_bDiedFromLaser[victim] = true;
+}
+
+stock void OnWeaponEquip_VIPMode(int client, int weapon, Action &result)
+{
+	#pragma unused client
+	#pragma unused weapon
+	#pragma unused result
 }
 
 Action VIPMode_KillAllTimer(Handle timer)

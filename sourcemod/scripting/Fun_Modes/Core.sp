@@ -15,7 +15,8 @@ bool g_bEvent_PlayerTeam;
 bool g_bEvent_PlayerSpawn;
 
 /* Client SDKHook Boolens */
-bool g_bSDKHook_OnTageDamagePost[MAXPLAYERS+1] = { false, ... };
+bool g_bSDKHook_OnTakeDamagePost[MAXPLAYERS + 1] = { false, ... };
+bool g_bSDKHook_WeaponEquip[MAXPLAYERS + 1] =  { false, ... };
 
 /* Round Checking Booleans */
 bool g_bRoundEnd;
@@ -133,7 +134,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC_PARAM(%1, DoubleJump, %2); \
 		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2); \
 		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
-		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2)
+		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2); \
+		CALL_MODE_FUNC_PARAM(%1, GunGame, %2)
 
 /*
 these commented macros are not used for now
@@ -147,11 +149,12 @@ these commented macros are not used for now
 		CALL_MODE_FUNC_PARAM2(%1, DoubleJump, %2, %3); \
 		CALL_MODE_FUNC_PARAM2(%1, DamageGame, %2, %3)
 */
-/* for now there are only 2 modes that use 3 params functions */
+/* for now there are only 3 modes that use 3 params functions */
 #define CALL_MODE_FUNC_PARAM3(%1,%2,%3,%4,%5) %1_%2(%3,%4,%5)
 #define DECLARE_FM_FORWARD_PARAM3(%1,%2,%3,%4) \
 		CALL_MODE_FUNC_PARAM3(%1, VIPMode, %2, %3, %4); \
-		CALL_MODE_FUNC_PARAM3(%1, DamageGame, %2, %3, %4)
+		CALL_MODE_FUNC_PARAM3(%1, DamageGame, %2, %3, %4); \
+		CALL_MODE_FUNC_PARAM3(%1, GunGame, %2, %3, %4)
 
 /* %0: ConVarInfo[], %1: index, %2: name, %3: default value, %4: description 
 	%5: cvar values, %6: cvar value type
@@ -180,3 +183,4 @@ these commented macros are not used for now
 #include "Fun_Modes/SlapMode.sp"
 #include "Fun_Modes/MakoKickers.sp"
 #include "Fun_Modes/ChaosWeapons.sp"
+#include "Fun_Modes/GunGame.sp"

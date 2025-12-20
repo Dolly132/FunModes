@@ -73,7 +73,10 @@ public void OnMapStart()
 public void OnMapEnd()
 {
 	for (int i = 1; i <= MaxClients; i++)
-		g_bSDKHook_OnTageDamagePost[i] = false;
+	{
+		g_bSDKHook_OnTakeDamagePost[i] = false;
+		g_bSDKHook_WeaponEquip[i] = false;
+	}
 
 	DECLARE_FM_FORWARD(OnMapEnd);
 }
@@ -85,7 +88,8 @@ public void OnClientPutInServer(int client)
 
 public void OnClientDisconnect(int client)
 {
-	g_bSDKHook_OnTageDamagePost[client] = false;
+	g_bSDKHook_OnTakeDamagePost[client] = false;
+	g_bSDKHook_WeaponEquip[client] = false;
 	DECLARE_FM_FORWARD_PARAM(OnClientDisconnect, client);
 }
 
@@ -132,6 +136,15 @@ void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype)
 {
 	DECLARE_FM_FORWARD_PARAM3(OnTakeDamagePost, victim, attacker, damage);
+}
+
+Action OnWeaponEquip(int client, int weapon)
+{
+	Action result = Plugin_Continue;
+	
+	DECLARE_FM_FORWARD_PARAM3(OnWeaponEquip, client, weapon, result);
+	
+	return result;
 }
 
 /* Events Hooks functions */

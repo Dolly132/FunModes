@@ -66,11 +66,11 @@ stock void OnMapEnd_DamageGame()
 
 stock void OnClientPutInServer_DamageGame(int client)
 {
-	if (g_bSDKHook_OnTageDamagePost[client])
+	if (g_bSDKHook_OnTakeDamagePost[client])
 		return;
 	
 	SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
-	g_bSDKHook_OnTageDamagePost[client] = true;
+	g_bSDKHook_OnTakeDamagePost[client] = true;
 }
 
 stock void OnClientDisconnect_DamageGame(int client)
@@ -128,6 +128,13 @@ stock void OnTakeDamagePost_DamageGame(int victim, int attacker, float damage)
 		return;
 	
 	g_iDealtDamage[attacker] += RoundToNearest(damage);
+}
+
+stock void OnWeaponEquip_DamageGame(int client, int weapon, Action &result)
+{
+	#pragma unused client
+	#pragma unused weapon
+	#pragma unused result
 }
 
 public Action Cmd_DamageGameToggle(int client, int args)
