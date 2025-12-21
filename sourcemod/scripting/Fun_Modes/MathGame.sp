@@ -86,7 +86,7 @@ stock void OnPluginStart_MathGame()
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, MATHGAME_CONVAR_MAX_TRIES,
-		"sm_mathgame_include_zombies", "3", "How many failed tries for zombies to answer question until they can never respawn again?",
+		"sm_mathgame_max_tries", "3", "How many failed tries for zombies to answer question until they can never respawn again?",
 		("1,2,3,4,5"), "int"
 	);
 	
