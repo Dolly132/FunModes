@@ -122,7 +122,9 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC(%1, BlindMode); \
 		CALL_MODE_FUNC(%1, SlapMode); \
 		CALL_MODE_FUNC(%1, MakoKickers); \
-		CALL_MODE_FUNC(%1, ChaosWeapons)
+		CALL_MODE_FUNC(%1, ChaosWeapons); \
+		CALL_MODE_FUNC(%1, GunGame); \
+		CALL_MODE_FUNC(%1, MathGame)
 
 #define CALL_MODE_FUNC_PARAM(%1,%2,%3) %1_%2(%3)
 #define DECLARE_FM_FORWARD_PARAM(%1,%2) \
@@ -184,3 +186,4 @@ these commented macros are not used for now
 #include "Fun_Modes/MakoKickers.sp"
 #include "Fun_Modes/ChaosWeapons.sp"
 #include "Fun_Modes/GunGame.sp"
+#include "Fun_Modes/MathGame.sp"

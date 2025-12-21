@@ -43,7 +43,7 @@ stock void OnPluginStart_ChaosWeapons()
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CHAOSWEAPONS_CONVAR_TIMER_INTERVAL,
-		"sm_chaosweapons_enable", "30.0", "Every how many seconds to keep picking a random weapon?",
+		"sm_chaosweapons_timer_interval", "30.0", "Every how many seconds to keep picking a random weapon?",
 		("10.0,15.0,20.0,30.0"), "float"
 	);
 	

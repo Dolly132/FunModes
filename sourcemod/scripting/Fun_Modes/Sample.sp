@@ -2,7 +2,7 @@
     (). FunModes V2:
         
     @file           Sample.sp
-    @Usage         	Functions for the GunGame Mode.
+    @Usage         	Functions for the Sample Mode.
     				
 */
 

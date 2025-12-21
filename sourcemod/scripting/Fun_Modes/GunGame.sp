@@ -55,6 +55,12 @@ enum struct GunGame_Data
 	float originalGravity;
 	
 	GunGame_Reward reward;
+	
+	void ResetLevel()
+	{
+		this.level[0] = 0;
+		this.level[1] = 0;
+	}
 }
 
 GunGame_Data g_GunGameData[MAXPLAYERS + 1];
@@ -141,11 +147,22 @@ stock void OnMapEnd_GunGame()
 
 stock void OnClientPutInServer_GunGame(int client)
 {
-	if (g_bSDKHook_WeaponEquip[client])
+	if (!THIS_MODE_INFO.isOn)
 		return;
 	
-	SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
-	g_bSDKHook_WeaponEquip[client] = true;
+	g_GunGameData[client].ResetLevel();
+	
+	if (!g_bSDKHook_WeaponEquip[client])
+	{
+		SDKHook(client, SDKHook_WeaponEquip, OnWeaponEquip);
+		g_bSDKHook_WeaponEquip[client] = true;
+	}
+	
+	if (!g_bSDKHook_OnTakeDamagePost[client])
+	{
+		SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+		g_bSDKHook_OnTakeDamagePost[client] = true;
+	}
 }
 
 stock void OnClientDisconnect_GunGame(int client)
@@ -162,7 +179,16 @@ stock void Event_RoundStart_GunGame() {}
 stock void Event_RoundEnd_GunGame() {}
 stock void Event_PlayerSpawn_GunGame(int client)
 {
-	#pragma unused client
+	RequestFrame(GunGame_CheckPlayerSpawn, client);
+}
+
+void GunGame_CheckPlayerSpawn(int client)
+{
+	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+		return;
+	
+	g_GunGameData[client].ResetLevel();
+	GunGame_StripPlayer(client, true);
 }
 
 stock void Event_PlayerTeam_GunGame(Event event)
@@ -177,6 +203,9 @@ stock void Event_PlayerDeath_GunGame(int client)
 
 stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
 	if (!(1<=attacker<=MaxClients) || !ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
 		return;
 	
@@ -197,6 +226,9 @@ stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
 
 stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
 	{
 	#if !defined _EntWatch_include
@@ -219,6 +251,9 @@ stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 
 public Action CS_OnBuyCommand(int client, const char[] weapon)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Continue;
+		
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
 	{
 	#if !defined _EntWatch_include
@@ -251,6 +286,22 @@ public Action Cmd_GunGameToggle(int client, int args)
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
 	
 	CPrintToChatAll("%s GunGame Mode is now %s!", THIS_MODE_INFO.tag, THIS_MODE_INFO.isOn ? "On" : "Off");
+	
+	if (THIS_MODE_INFO.isOn)
+	{
+		FunModes_HookEvent(g_bEvent_PlayerSpawn, "player_spawn", Event_PlayerSpawn);
+		
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i))	
+				continue;
+			
+			OnClientPutInServer_GunGame(i);
+		}
+		
+		CPrintToChatAll("%s Your wepaon will be upgraded when you reach the required damage for each weapon type!", THIS_MODE_INFO.tag);
+		CS_TerminateRound(3.0, CSRoundEnd_Draw);
+	}
 	
 	return Plugin_Handled;
 }
@@ -361,10 +412,13 @@ void GunGame_EquipWeapon(int client, const char[] weaponName)
 	g_GunGameData[client].allowEquip = false;
 }
 
-void GunGame_StripPlayer(int client)
+void GunGame_StripPlayer(int client, bool keepSecondary = false)
 {
 	for (int i = 0; i <= 5; i++)
 	{
+		if (keepSecondary && i == CS_SLOT_SECONDARY)
+			continue;
+			
 		int wp = GetPlayerWeaponSlot(client, i);
 		if (!IsValidEntity(wp))
 			continue;
