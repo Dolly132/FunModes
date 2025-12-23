@@ -199,11 +199,11 @@ void DamageGame_StartTimers()
 	g_hDamageGameTimer = CreateTimer(float(interval), Timer_DamageGame, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 	switch (THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue)
 	{
-		case 0:	CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %.2f seconds!", THIS_MODE_INFO.tag, interval);
+		case 0:	CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %d seconds!", THIS_MODE_INFO.tag, interval);
 		case 1: CPrintToChatAll("%s Humans who don't shoot zombies for {olive}%d seconds {lightgreen}(repeated) will be damaged", THIS_MODE_INFO.tag, interval);
 		default:
 		{
-			CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %.2f seconds! (This doesn't include humans who don't defend at all)", THIS_MODE_INFO.tag, interval);
+			CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %d seconds! (This doesn't include humans who don't defend at all)", THIS_MODE_INFO.tag, interval);
 			CPrintToChatAll("%s Humans who don't shoot zombies for {olive}%d seconds {lightgreen}(repeated) will be damaged", THIS_MODE_INFO.tag, interval);
 		}
 	}
@@ -279,7 +279,13 @@ Action Timer_DamageGame(Handle timer)
 		}
 			
 	}
-
+	
+	if (mode > 0)
+	{
+		for (int i = 1; i <= MaxClients; i++)
+			g_iDealtDamage[i] = -1;
+	}
+	
 	return Plugin_Continue;
 }
 
