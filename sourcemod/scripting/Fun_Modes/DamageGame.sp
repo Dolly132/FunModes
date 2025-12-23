@@ -101,6 +101,9 @@ stock void OnClientDisconnect_DamageGame(int client)
 stock void ZR_OnClientInfected_DamageGame(int client)
 {
 	#pragma unused client
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
 	if (!g_bMotherZombie && g_hDamageGameTimer == null)
 		DamageGame_StartTimers();		
 }
