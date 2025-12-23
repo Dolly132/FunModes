@@ -40,7 +40,7 @@ stock void OnPluginStart_DamageGame()
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_MODE,
-		"sm_damagegame_damage", "0", "DamageGame Mode (0 = Worst defenders, 1 = Doesn't defend for x time, 2 = Both)",
+		"sm_damagegame_mode", "0", "DamageGame Mode (0 = Worst defenders, 1 = Doesn't defend for x time, 2 = Both)",
 		("0,1,2"), "int"
 	);
 	
