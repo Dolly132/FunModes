@@ -95,13 +95,10 @@ public void OnClientDisconnect(int client)
 
 public void ZR_OnClientInfected(int client, int attacker, bool motherInfect)
 {
-	DECLARE_FM_FORWARD_PARAM(ZR_OnClientInfected, client);
-
-	if (g_bMotherZombie)
-		return;
-	
-	if (motherInfect)
+	if (motherInfect && !g_bMotherZombie)
 		g_bMotherZombie = true;
+		
+	DECLARE_FM_FORWARD_PARAM(ZR_OnClientInfected, client);
 }
 
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)

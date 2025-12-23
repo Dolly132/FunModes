@@ -11,7 +11,8 @@ Handle g_hDamageGameTimer;
 
 #define DAMAGEGAME_CONVAR_TIME_INTERVAL	0
 #define DAMAGEGAME_CONVAR_DAMAGE		1
-#define DAMAGEGAME_CONVAR_TOGGLE		2
+#define DAMAGEGAME_CONVAR_MODE			2
+#define DAMAGEGAME_CONVAR_TOGGLE		3
 
 /* CALLED on Plugin Start */
 stock void OnPluginStart_DamageGame()
@@ -36,7 +37,13 @@ stock void OnPluginStart_DamageGame()
 		"sm_damagegame_damage", "15.0", "The amount of damage to apply to players who don't shoot zombies",
 		("5.0,10.0,15.0,20.0"), "float"
 	);
-
+	
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_MODE,
+		"sm_damagegame_damage", "0", "DamageGame Mode (0 = Worst defenders, 1 = Doesn't defend for x time, 2 = Both)",
+		("0,1,2"), "int"
+	);
+	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_TOGGLE,
 		"sm_damagegame_enable", "1", "Enable/Disable Damage Game",
@@ -47,13 +54,23 @@ stock void OnPluginStart_DamageGame()
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 
 	THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TOGGLE].cvar.AddChangeHook(OnDamageGameModeToggle);
+	
+	THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.AddChangeHook(OnDamageGameModeChange);
 }
 
-void OnDamageGameModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
+void OnDamageGameModeToggle(ConVar cvar, const char[] oldValue, const char[] newValue)
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
 		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+}
+
+void OnDamageGameModeChange(ConVar cvar, const char[] oldValue, const char[] newValue)
+{
+	for (int i = 1; i <= MaxClients; i++)
+		g_iDealtDamage[i] = -1;
+		
+	DamageGame_StartTimers();
 }
 
 stock void OnMapStart_DamageGame() {}
@@ -84,6 +101,8 @@ stock void OnClientDisconnect_DamageGame(int client)
 stock void ZR_OnClientInfected_DamageGame(int client)
 {
 	#pragma unused client
+	if (!g_bMotherZombie && g_hDamageGameTimer == null)
+		DamageGame_StartTimers();		
 }
 
 stock void Event_RoundStart_DamageGame()
@@ -93,8 +112,6 @@ stock void Event_RoundStart_DamageGame()
 		
 	for (int i = 1; i <= MaxClients; i++)
 		g_iDealtDamage[i] = -1;
-		
-	DamageGame_StartTimers();
 }
 
 stock void Event_RoundEnd_DamageGame() {}
@@ -165,8 +182,6 @@ public Action Cmd_DamageGameToggle(int client, int args)
 		}
 		
 		DamageGame_StartTimers();
-		
-		CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %.2f seconds!", THIS_MODE_INFO.tag, THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TIME_INTERVAL].cvar.FloatValue);
 	}
 	else
 	{
@@ -178,8 +193,20 @@ public Action Cmd_DamageGameToggle(int client, int args)
 
 void DamageGame_StartTimers()
 {
+	int interval = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TIME_INTERVAL].cvar.IntValue;
+	
 	delete g_hDamageGameTimer;
-	g_hDamageGameTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TIME_INTERVAL].cvar.FloatValue, Timer_DamageGame, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	g_hDamageGameTimer = CreateTimer(float(interval), Timer_DamageGame, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	switch (THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue)
+	{
+		case 0:	CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %.2f seconds!", THIS_MODE_INFO.tag, interval);
+		case 1: CPrintToChatAll("%s Humans who don't shoot zombies for {olive}%d seconds {lightgreen}(repeated) will be damaged", THIS_MODE_INFO.tag, interval);
+		default:
+		{
+			CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %.2f seconds! (This doesn't include humans who don't defend at all)", THIS_MODE_INFO.tag, interval);
+			CPrintToChatAll("%s Humans who don't shoot zombies for {olive}%d seconds {lightgreen}(repeated) will be damaged", THIS_MODE_INFO.tag, interval);
+		}
+	}
 }
 
 Action Timer_DamageGame(Handle timer)
@@ -192,7 +219,7 @@ Action Timer_DamageGame(Handle timer)
 
 	if (!g_bMotherZombie || g_bRoundEnd)
 		return Plugin_Handled;
-		
+	
 	int lowestDamage = 999999, count, clients[MAXPLAYERS + 1];
 	
 	for (int i = 1; i <= MaxClients; i++)
@@ -212,38 +239,61 @@ Action Timer_DamageGame(Handle timer)
 		
 		if (thisDamage >= 0 && thisDamage < lowestDamage)
 		{
+			if (thisDamage == 0)
+				clients[count++] = i;
+				
 			lowestDamage = thisDamage;
 		}
 	}
 	
-	if (lowestDamage == 999999)
+	int mode = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue;
+	if (mode == 0 && lowestDamage == 999999)
+		return Plugin_Continue;
+	
+	if (!count)
 		return Plugin_Continue;
 		
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (lowestDamage == g_iDealtDamage[i])
-		{
-			clients[count] = i;
-			count++;
-		}
-	}
-
-	// We got the players who dealt the lowest damage, Lets damage THEM!
+	/* Depending on the damagegame mode, we will specify which clients to damage */
 	for (int i = 0; i < count; i++)
 	{
-		int client = clients[i];
-		int health = GetClientHealth(client);
-		int newHealth = health - THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_DAMAGE].cvar.IntValue;
-		if (newHealth <= 0)
-			ForcePlayerSuicide(client);
-		else 
-			SetEntityHealth(client, newHealth);
+		int client = clients[count];
+		switch (mode)
+		{
+			case 0:
+			{
+				if (lowestDamage == g_iDealtDamage[client])
+					DamageGame_DamagePlayer(client);
+			}
 			
-		CPrintToChat(client, "%s You have been damaged for being a bad defender", THIS_MODE_INFO.tag);
-		CPrintToChatAll("%s %N {olive}got damaged for being a bad defender!", THIS_MODE_INFO.tag, client);
+			case 1:
+			{
+				if (g_iDealtDamage[client] == 0)
+					DamageGame_DamagePlayer(client);
+			}
+			
+			default:
+			{
+				if (g_iDealtDamage[client] == 0 || (lowestDamage != 0 && lowestDamage == g_iDealtDamage[client]))
+					DamageGame_DamagePlayer(client);
+			}
+		}
+			
 	}
 
 	return Plugin_Continue;
+}
+
+void DamageGame_DamagePlayer(int client)
+{
+	int health = GetClientHealth(client);
+	int newHealth = health - THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_DAMAGE].cvar.IntValue;
+	if (newHealth <= 0)
+		ForcePlayerSuicide(client);
+	else 
+		SetEntityHealth(client, newHealth);
+		
+	CPrintToChat(client, "%s You have been damaged for being a bad defender", THIS_MODE_INFO.tag);
+	CPrintToChatAll("%s %N {olive}got damaged for being a bad defender!", THIS_MODE_INFO.tag, client);
 }
 
 /* DamageGame Settings */
