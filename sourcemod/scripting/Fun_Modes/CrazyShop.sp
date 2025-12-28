@@ -149,7 +149,7 @@ enum struct CrazyShop_PlayerData
 		this.superWeaponName[0] = '\0';
 		this.laserProtect = false;
 		this.igniteImmunity = false;
-		this.protectLaser;
+		this.protectLaser = false;
 		
 		for (int i = 0; i < sizeof(CrazyShop_PlayerData::itemsCount); i++)
 		{
@@ -219,6 +219,7 @@ stock void OnPluginStart_CrazyShop()
 	RegAdminCmd("sm_fm_crazyshop", Cmd_CrazyShopToggle, ADMFLAG_CONVARS, "Turn CrazyShop Mode On/Off");
 	RegAdminCmd("sm_crazyshop_settings", Cmd_CrazyShopSettings, ADMFLAG_CONVARS, "Open CrazyShop Sttings Menu");
 	RegConsoleCmd("sm_crazyshop", Cmd_CrazyShopMenu, "Open the CrazyShop Menu");
+	RegConsoleCmd("sm_myitems", Cmd_CrazyShopMyItems, "Open the Available Items Menu");
 	
 	/* CONVARS */
 	DECLARE_FM_CVAR(
@@ -1056,6 +1057,21 @@ Action Cmd_CrazyShopMenu(int client, int args)
 	return Plugin_Handled;
 }
 
+Action Cmd_CrazyShopMyItems(int client, int args)
+{
+	if (!THIS_MODE_INFO.isOn)
+	{
+		CReplyToCommand(client, "%s The CrazyShop Mode is currently OFF!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+	
+	if (!client)
+		return Plugin_Handled;
+	
+	CrazyShop_OpenAvailableItems(client);
+	return Plugin_Handled;
+}
+
 void CrazyShop_OpenMenu(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
@@ -1109,6 +1125,8 @@ int Menu_CrazyShop(Menu menu, MenuAction action, int param1, int param2)
 			
 		}
 	}
+	
+	return -1;
 }
 
 void CrazyShop_OpenGiftMenu(int client)
@@ -1245,6 +1263,8 @@ int Menu_AvailableItems(Menu menu, MenuAction action, int param1, int param2)
 			CrazyShop_OpenAvailableItems(param1);
 		}
 	}
+	
+	return -1;
 }
 
 void CrazyShop_Activate(int client, int itemNum)
