@@ -186,12 +186,6 @@ Database g_hCrazyShop_DB;
 #define PRECACHE_MOVE_SND       "nide/laser.wav"
 #define MOVE_SND                "sound/nide/laser.wav"
 
-#define LASER                   "_throwinglaser_maxime1907"
-#define LASER_TRACK             "_throwinglaser_maxime1907_track"
-#define LASER_TRACK_START       "_throwinglaser_maxime1907_track0"
-#define LASER_TRACK_END         "_throwinglaser_maxime1907_track1"
-#define LASER_TRAIN             "_throwinglaser_maxime1907_train"
-
 #define LASER_DISTANCE_START    250.0
 #define LASER_DISTANCE_END      2000.0
 
@@ -224,7 +218,7 @@ stock void OnPluginStart_CrazyShop()
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DAMAGE,
-		"sm_crazyshop_damage", "1", "The needed damage for humans to be rewarded with credits",
+		"sm_crazyshop_damage", "20", "The needed damage for humans to be rewarded with credits",
 		("200,500,1000,1500,2000"), "int"
 	);
 	
@@ -1087,7 +1081,7 @@ void CrazyShop_OpenMenu(int client)
 		team = (g_CrazyShopItems[i].team == 0) ? "Zombies" : "Humans";
 		
 		char[] item = new char[sizeof(CrazyShop_Item::name) + strlen(team)];
-		FormatEx(item, sizeof(CrazyShop_Item::name) + strlen(team), "%s - %d$ [%s]%s", g_CrazyShopItems[i].name, team, i == (sizeof(g_CrazyShopItems)-1) ? "\n ":"");
+		FormatEx(item, sizeof(CrazyShop_Item::name) + strlen(team), "%s - %d$ [%s]%s", g_CrazyShopItems[i].name, g_CrazyShopItems[i].price, team, i == (sizeof(g_CrazyShopItems)-1) ? "\n ":"");
 		
 		menu.AddItem(NULL_STRING, item, PLAYER_CREDITS(client) >= g_CrazyShopItems[i].price ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 	}
