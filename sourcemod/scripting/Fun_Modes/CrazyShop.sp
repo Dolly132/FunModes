@@ -218,7 +218,7 @@ stock void OnPluginStart_CrazyShop()
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DAMAGE,
-		"sm_crazyshop_damage", "20", "The needed damage for humans to be rewarded with credits",
+		"sm_crazyshop_damage", "200", "The needed damage for humans to be rewarded with credits",
 		("200,500,1000,1500,2000"), "int"
 	);
 	
