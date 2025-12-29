@@ -6,6 +6,13 @@
     				
 */
 
+/*
+	Slapmode :
+	Like all 3 or 5 seconds (not sure about the time) a random ct gets slapped, i think it can make certain maps really fun
+	
+	By @Kamisama Kaneki
+*/
+
 #pragma semicolon 1
 #pragma newdecls required
 

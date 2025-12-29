@@ -5,6 +5,14 @@
     @Usage         	Functions for the Blind mode.
 */
 
+/*
+	Could add a mode that gives a bunch of random zombies 1 flashbang to blind cts. 
+	Like for example if there is 20 zombies, 5 of them gets a flashbang, 
+	and after an amount of time, another 5 random zombies gets flashbangs again
+	
+	By @LowParty
+*/
+
 #pragma semicolon 1
 #pragma newdecls required
 

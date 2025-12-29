@@ -76,6 +76,7 @@ public void OnMapEnd()
 	{
 		g_bSDKHook_OnTakeDamagePost[i] = false;
 		g_bSDKHook_WeaponEquip[i] = false;
+		g_bSDKHook_OnTakeDamage[i] = false;
 	}
 
 	DECLARE_FM_FORWARD(OnMapEnd);
@@ -90,6 +91,7 @@ public void OnClientDisconnect(int client)
 {
 	g_bSDKHook_OnTakeDamagePost[client] = false;
 	g_bSDKHook_WeaponEquip[client] = false;
+	g_bSDKHook_OnTakeDamage[client] = false;
 	DECLARE_FM_FORWARD_PARAM(OnClientDisconnect, client);
 }
 
@@ -140,6 +142,15 @@ Action OnWeaponEquip(int client, int weapon)
 	Action result = Plugin_Continue;
 	
 	DECLARE_FM_FORWARD_PARAM3(OnWeaponEquip, client, weapon, result);
+	
+	return result;
+}
+
+Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+{
+	Action result = Plugin_Continue;
+	
+	DECLARE_FM_FORWARD_PARAM4(OnTakeDamage, victim, attacker, damage, result);
 	
 	return result;
 }

@@ -101,11 +101,11 @@ stock void OnMapEnd_VIPMode()
 
 stock void OnClientPutInServer_VIPMode(int client)
 {
-	if (g_bSDKHook_OnTakeDamagePost[client])
+	if (g_bSDKHook_OnTakeDamage[client])
 		return;
 	
-	SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
-	g_bSDKHook_OnTakeDamagePost[client] = true;
+	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+	g_bSDKHook_OnTakeDamage[client] = true;
 }
 
 stock void OnClientDisconnect_VIPMode(int client)
@@ -191,6 +191,15 @@ stock void Event_PlayerDeath_VIPMode(int client)
 
 stock void OnTakeDamagePost_VIPMode(int victim, int attacker, float damage)
 {
+	#pragma unused victim
+	#pragma unused attacker
+	#pragma unused damage
+}
+
+stock void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &result)
+{
+	#pragma unused result
+	
 	if (!THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_LASER].cvar.BoolValue)
 		return;
 	
@@ -348,10 +357,10 @@ public Action Cmd_VIPModeToggle(int client, int args)
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || IsFakeClient(i) || !IsClientConnected(i))
+			if (!IsClientInGame(i) || IsFakeClient(i))
 				continue;
 
-			SDKHook(i, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+			SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 		}
 	}
 

@@ -2,8 +2,17 @@
     (). FunModes V2:
         
     @file           GunGame.sp
-    @Usage         	
+    @Usage         	Functions for the GunGame Mode.
     				
+*/
+
+/*
+	GunGame Escape: Humans start with pistols like in a gg game, and every 1 thousand damage, 
+	the gun automatically upgrades to the next one, making it into pistols, smgs, rifles and ending in m249. 
+	After 1 complete cycle (If the map is long enough to cycle), 
+	the human will get a random advantage such as 3 extra grenades, more speed, more grav... etc
+	
+	By @kiku-san
 */
 
 #pragma semicolon 1

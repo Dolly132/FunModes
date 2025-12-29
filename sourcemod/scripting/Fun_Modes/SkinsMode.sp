@@ -14,7 +14,7 @@ ModeInfo g_SkinsModeInfo;
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_SkinsModeInfo
 
-#define SkinsMode_CONVAR_TOGGLE 0
+#define SKINSMODE_CONVAR_TOGGLE 0
 
 stock void OnPluginStart_SkinsMode()
 {
@@ -23,13 +23,13 @@ stock void OnPluginStart_SkinsMode()
 	
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
-	RegAdminCmd("sm_fm_SkinsMode", Cmd_SkinsModeToggle, ADMFLAG_CONVARS, "Turn SkinsMode Mode On/Off");
-	RegAdminCmd("sm_SkinsMode_settings", Cmd_SkinsModeSettings, ADMFLAG_CONVARS, "Open SkinsMode Sttings Menu");
+	RegAdminCmd("sm_fm_skinsmode", Cmd_SkinsModeToggle, ADMFLAG_CONVARS, "Turn SkinsMode Mode On/Off");
+	RegAdminCmd("sm_skinsmode_settings", Cmd_SkinsModeSettings, ADMFLAG_CONVARS, "Open SkinsMode Sttings Menu");
 	
 	/* CONVARS */
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, SkinsMode_CONVAR_TOGGLE,
-		"sm_SkinsMode_enable", "1", "Enable/Disable SkinsMode Mode (This differs from turning it on/off)",
+		THIS_MODE_INFO.cvarInfo, SKINSMODE_CONVAR_TOGGLE,
+		"sm_skinsmode_enable", "1", "Enable/Disable SkinsMode Mode (This differs from turning it on/off)",
 		("0,1"), "bool"
 	);
 	
@@ -38,7 +38,7 @@ stock void OnPluginStart_SkinsMode()
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 	
-	THIS_MODE_INFO.cvarInfo[SkinsMode_CONVAR_TOGGLE].cvar.AddChangeHook(OnSkinsModeModeToggle);
+	THIS_MODE_INFO.cvarInfo[SKINSMODE_CONVAR_TOGGLE].cvar.AddChangeHook(OnSkinsModeModeToggle);
 }
 
 void OnSkinsModeModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
@@ -112,8 +112,11 @@ public Action Cmd_SkinsModeSettings(int client, int args)
 
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
 
-	menu.AddItem(NULL_STRING, "Show Cvars\n");
-
+	menu.AddItem(NULL_STRING, "Show Cvars\n ");
+	
+	menu.AddItem(NULL_STRING, "Change Zombies Skin", THIS_MODE_INFO.isOn ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+	menu.AddItem(NULL_STRING, "Change Humans Skin", THIS_MODE_INFO.isOn ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
+	
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 	
@@ -135,9 +138,19 @@ int Menu_SkinsModeSettings(Menu menu, MenuAction action, int param1, int param2)
 
 		case MenuAction_Select:
 		{
-			ShowCvarsInfo(param1, THIS_MODE_INFO);
+			switch (param2)
+			{
+				case 0: ShowCvarsInfo(param1, THIS_MODE_INFO);
+				case 1: ShowTeamSkins(param1, 0);
+				case 2: ShowTeamSkins(param1, 1);
+			}
 		}
 	}
 
 	return 0;
+}
+
+void ShowTeamSkins(int client, int team)
+{
+	
 }

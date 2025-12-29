@@ -17,6 +17,7 @@ bool g_bEvent_PlayerSpawn;
 /* Client SDKHook Boolens */
 bool g_bSDKHook_OnTakeDamagePost[MAXPLAYERS + 1] = { false, ... };
 bool g_bSDKHook_WeaponEquip[MAXPLAYERS + 1] =  { false, ... };
+bool g_bSDKHook_OnTakeDamage[MAXPLAYERS + 1] =  { false, ... };
 
 /* Round Checking Booleans */
 bool g_bRoundEnd;
@@ -124,7 +125,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC(%1, MakoKickers); \
 		CALL_MODE_FUNC(%1, ChaosWeapons); \
 		CALL_MODE_FUNC(%1, GunGame); \
-		CALL_MODE_FUNC(%1, MathGame)
+		CALL_MODE_FUNC(%1, MathGame); \
+		CALL_MODE_FUNC(%1, CrazyShop)
 
 #define CALL_MODE_FUNC_PARAM(%1,%2,%3) %1_%2(%3)
 #define DECLARE_FM_FORWARD_PARAM(%1,%2) \
@@ -137,7 +139,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2); \
 		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
 		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2); \
-		CALL_MODE_FUNC_PARAM(%1, GunGame, %2)
+		CALL_MODE_FUNC_PARAM(%1, GunGame, %2); \
+		CALL_MODE_FUNC_PARAM(%1, CrazyShop, %2)
 
 /*
 these commented macros are not used for now
@@ -158,6 +161,12 @@ these commented macros are not used for now
 		CALL_MODE_FUNC_PARAM3(%1, DamageGame, %2, %3, %4); \
 		CALL_MODE_FUNC_PARAM3(%1, GunGame, %2, %3, %4)
 
+/* For 4 params-functions, only crazyshop and vipmode use it for now */
+#define CALL_MODE_FUNC_PARAM4(%1,%2,%3,%4,%5,%6) %1_%2(%3,%4,%5,%6)
+#define DECLARE_FM_FORWARD_PARAM4(%1,%2,%3,%4,%5) \
+		CALL_MODE_FUNC_PARAM4(%1, VIPMode, %2, %3, %4, %5); \
+		CALL_MODE_FUNC_PARAM4(%1, CrazyShop, %2, %3, %4, %5)
+		
 /* %0: ConVarInfo[], %1: index, %2: name, %3: default value, %4: description 
 	%5: cvar values, %6: cvar value type
 */ 
@@ -187,3 +196,4 @@ these commented macros are not used for now
 #include "Fun_Modes/ChaosWeapons.sp"
 #include "Fun_Modes/GunGame.sp"
 #include "Fun_Modes/MathGame.sp"
+#include "Fun_Modes/CrazyShop.sp"

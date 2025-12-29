@@ -6,6 +6,15 @@
     				
 */
 
+/*
+	Chaos Weapons: A mode where every 30 seconds or 1 minute, 
+	a global message says what weapon will be used like "Only the AK47 will push the zombies for the next 30 seconds!" 
+	and only the named weapon will have normal knockback, any other weapon will have 0.1 knockback (It wont push zombies) 
+	making the humans buy a certain weapon all the time and buy all the variety of weapons in the shop.
+	
+	By @kiku-san
+*/
+
 #pragma semicolon 1
 #pragma newdecls required
 
