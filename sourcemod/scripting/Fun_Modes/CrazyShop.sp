@@ -91,7 +91,7 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Infect Protection", 1, 15, 0.0, 15.0, DATATYPE_TIME, ""
 	},
 	{
-		"Super Weapon", 1, 12, 3.0, 15.0, DATATYPE_BOTH, "Damage Scale"
+		"Super Weapon", 1, 12, 2.5, 15.0, DATATYPE_BOTH, "Damage Scale"
 	},
 	{
 		"Laser Protection", 1, 15, 0.0, 20.0, DATATYPE_TIME, ""
@@ -149,7 +149,7 @@ enum struct CrazyShop_PlayerData
 		this.superWeaponName[0] = '\0';
 		this.laserProtect = false;
 		this.igniteImmunity = false;
-		this.protectLaser;
+		this.protectLaser = false;
 		
 		for (int i = 0; i < sizeof(CrazyShop_PlayerData::itemsCount); i++)
 		{
@@ -186,12 +186,6 @@ Database g_hCrazyShop_DB;
 #define PRECACHE_MOVE_SND       "nide/laser.wav"
 #define MOVE_SND                "sound/nide/laser.wav"
 
-#define LASER                   "_throwinglaser_maxime1907"
-#define LASER_TRACK             "_throwinglaser_maxime1907_track"
-#define LASER_TRACK_START       "_throwinglaser_maxime1907_track0"
-#define LASER_TRACK_END         "_throwinglaser_maxime1907_track1"
-#define LASER_TRAIN             "_throwinglaser_maxime1907_train"
-
 #define LASER_DISTANCE_START    250.0
 #define LASER_DISTANCE_END      2000.0
 
@@ -219,11 +213,12 @@ stock void OnPluginStart_CrazyShop()
 	RegAdminCmd("sm_fm_crazyshop", Cmd_CrazyShopToggle, ADMFLAG_CONVARS, "Turn CrazyShop Mode On/Off");
 	RegAdminCmd("sm_crazyshop_settings", Cmd_CrazyShopSettings, ADMFLAG_CONVARS, "Open CrazyShop Sttings Menu");
 	RegConsoleCmd("sm_crazyshop", Cmd_CrazyShopMenu, "Open the CrazyShop Menu");
+	RegConsoleCmd("sm_myitems", Cmd_CrazyShopMyItems, "Open the Available Items Menu");
 	
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DAMAGE,
-		"sm_crazyshop_damage", "1", "The needed damage for humans to be rewarded with credits",
+		"sm_crazyshop_damage", "200", "The needed damage for humans to be rewarded with credits",
 		("200,500,1000,1500,2000"), "int"
 	);
 	
@@ -231,6 +226,12 @@ stock void OnPluginStart_CrazyShop()
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_CREDITS,
 		"sm_crazyshop_credits", "1", "How many credits to reward the human when they reach the needed damage?",
 		("1,2,3,4,5"), "int"
+	);
+	
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_SAVECREDITS,
+		"sm_crazyshop_savecredits", "1", "Save credits to a database or not",
+		("0,1"), "bool"
 	);
 	
 	DECLARE_FM_CVAR(
@@ -353,6 +354,13 @@ stock void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
 		PLAYER_CREDITS(attacker) += credits;
 		DAMAGE_DEALT(attacker) = 0;
 	}
+}
+
+stock void OnWeaponEquip_CrazyShop(int client, int weapon, Action &result)
+{
+	#pragma unused client
+	#pragma unused weapon
+	#pragma unused result
 }
 
 stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Action &result)
@@ -529,7 +537,7 @@ void CrazyShop_DB_GetData(int client, const char[] table, const char[] column)
 		return;
 	
 	char query[1024];
-	THIS_MODE_DB.Format(query, sizeof(query), "SELECT `%s` FROM `%s` WHERE `client_steamid`=%d", column, table, steamID);
+	THIS_MODE_DB.Format(query, sizeof(query), "SELECT %s FROM `%s` WHERE `client_steamid`=%d", column, table, steamID);
 	
 	DataPack pack = new DataPack();
 	pack.WriteCell(GetClientUserId(client));
@@ -552,6 +560,8 @@ void DB_CrazyShop_OnGetData(Database db, DBResultSet results, const char[] error
 		delete pack;
 		return;
 	}
+	
+	pack.Reset();
 	
 	int client = GetClientOfUserId(pack.ReadCell());
 	if (!client)
@@ -656,7 +666,7 @@ void CrazyShop_DB_CheckItems(int client)
 			THIS_MODE_DB.Format(query, sizeof(query), 	"INSERT INTO `%s` (`client_steamid`, `item`, `count`) VALUES "
 													... "(%d, %d, %d) ON CONFLICT(`client_steamid`, `item`) DO UPDATE SET "
 													... "`count` = excluded.count WHERE `count` != excluded.count",
-												    	CRAZYSHOP_DB_ITEMS_DATA_COLUMN, i, PLAYER_ITEM_COUNT(client, i));
+												    	CRAZYSHOP_DB_ITEMS_DATA_COLUMN, steamID, i, PLAYER_ITEM_COUNT(client, i));
 			
 			THIS_MODE_DB.Query(DB_CrazyShop_OnCheckItems, query, _, DBPrio_High);
 		}
@@ -697,11 +707,13 @@ public Action Cmd_CrazyShopToggle(int client, int args)
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
-			if (!IsClientInGame(i) || IsFakeClient(i))
+			if (!IsClientInGame(i) || IsClientSourceTV(i))
 				continue;
-
+			
 			SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 			SDKHook(i, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+			g_bSDKHook_OnTakeDamagePost[i] = true;
+			g_bSDKHook_OnTakeDamage[i] = true;
 		}
 	}
 	else
@@ -1056,6 +1068,21 @@ Action Cmd_CrazyShopMenu(int client, int args)
 	return Plugin_Handled;
 }
 
+Action Cmd_CrazyShopMyItems(int client, int args)
+{
+	if (!THIS_MODE_INFO.isOn)
+	{
+		CReplyToCommand(client, "%s The CrazyShop Mode is currently OFF!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+	
+	if (!client)
+		return Plugin_Handled;
+	
+	CrazyShop_OpenAvailableItems(client);
+	return Plugin_Handled;
+}
+
 void CrazyShop_OpenMenu(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
@@ -1071,7 +1098,7 @@ void CrazyShop_OpenMenu(int client)
 		team = (g_CrazyShopItems[i].team == 0) ? "Zombies" : "Humans";
 		
 		char[] item = new char[sizeof(CrazyShop_Item::name) + strlen(team)];
-		FormatEx(item, sizeof(CrazyShop_Item::name) + strlen(team), "%s - %d$ [%s]%s", g_CrazyShopItems[i].name, team, i == (sizeof(g_CrazyShopItems)-1) ? "\n ":"");
+		FormatEx(item, sizeof(CrazyShop_Item::name) + strlen(team), "%s - %d$ [%s]%s", g_CrazyShopItems[i].name, g_CrazyShopItems[i].price, team, i == (sizeof(g_CrazyShopItems)-1) ? "\n ":"");
 		
 		menu.AddItem(NULL_STRING, item, PLAYER_CREDITS(client) >= g_CrazyShopItems[i].price ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 	}
@@ -1106,9 +1133,12 @@ int Menu_CrazyShop(Menu menu, MenuAction action, int param1, int param2)
 			
 			PLAYER_CREDITS(param1) -= g_CrazyShopItems[param2].price;
 			PLAYER_ITEM_COUNT(param1, param2) += 1;
-			
+			CPrintToChat(param1, "%s You have successfully bought {olive}%s, {lightgreen}Type !myitems to activate it!", THIS_MODE_INFO.tag, g_CrazyShopItems[param2].name);
+			CrazyShop_OpenMenu(param1);
 		}
 	}
+	
+	return -1;
 }
 
 void CrazyShop_OpenGiftMenu(int client)
@@ -1197,7 +1227,7 @@ void CrazyShop_OpenAvailableItems(int client)
 			menu.SetTitle("[CrazyShop] Your Available Items!");
 		}
 		
-		if (menu && itemsCount > 1)
+		if (menu && itemsCount > 1 && PLAYER_ITEM_COUNT(client, i) > 0)
 		{
 			char item[64];
 			FormatEx(item, sizeof(item), "%s - Activate", g_CrazyShopItems[i].name);
@@ -1219,6 +1249,9 @@ void CrazyShop_OpenAvailableItems(int client)
 		CrazyShop_Activate(client, lastItem);
 		return;
 	}
+	
+	menu.ExitButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
 }
 
 int Menu_AvailableItems(Menu menu, MenuAction action, int param1, int param2)
@@ -1245,6 +1278,8 @@ int Menu_AvailableItems(Menu menu, MenuAction action, int param1, int param2)
 			CrazyShop_OpenAvailableItems(param1);
 		}
 	}
+	
+	return -1;
 }
 
 void CrazyShop_Activate(int client, int itemNum)
@@ -1282,9 +1317,9 @@ void CrazyShop_Activate(int client, int itemNum)
 		case 0:
 		{
 			int maxHealth = GetEntProp(client, Prop_Data, "m_iMaxHealth");
-			SetEntProp(client, Prop_Data, "m_iMaxHealth", maxHealth + view_as<int>(item.amount));
+			SetEntProp(client, Prop_Data, "m_iMaxHealth", maxHealth + RoundToNearest(item.amount));
 			
-			SetEntityHealth(client, GetClientHealth(client) + view_as<int>(item.amount));
+			SetEntityHealth(client, GetClientHealth(client) + RoundToNearest(item.amount));
 		}
 		
 		// Infection Protection - Humans
@@ -1321,6 +1356,9 @@ void CrazyShop_Activate(int client, int itemNum)
 			strcopy(PLAYER_TEMP_VAR(client, superWeaponName), sizeof(CrazyShop_PlayerData::superWeaponName), 
 									weaponsList[GetRandomInt(0, sizeof(weaponsList) - 1)]);
 			
+			int weapon = GivePlayerItem(client, PLAYER_TEMP_VAR(client, superWeaponName));
+			EquipPlayerWeapon(client, weapon);
+			
 			PLAYER_ITEM_ACTIVE(client, itemNum) = true;
 			PLAYER_TEMP_VAR(client, superWeapon) = true;
 			
@@ -1329,6 +1367,7 @@ void CrazyShop_Activate(int client, int itemNum)
 			pack.WriteCell(itemNum);
 			
 			CreateTimer(item.time, Timer_CrazyShop_SuperWeapon, pack, TIMER_FLAG_NO_MAPCHANGE);
+			CPrintToChat(client, "u have activated super weapon bro Time %f", item.time);
 		}
 		
 		// Laser Protection - Humans
@@ -1351,7 +1390,7 @@ void CrazyShop_Activate(int client, int itemNum)
 			
 			float originalSpeed = GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue");
 			
-			SetEntPropFloat(client, Prop_Data, "m_fLaggedMovementValue", originalSpeed + item.amount);
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", originalSpeed + item.amount);
 			
 			DataPack pack = new DataPack();
 			pack.WriteCell(GetClientUserId(client));
@@ -1393,7 +1432,7 @@ void CrazyShop_Activate(int client, int itemNum)
 		// Magical Laser - Zombies
 		case 7:
 		{	
-			CrazyShop_ThrowLaser(client, view_as<int>(item.amount));
+			CrazyShop_ThrowLaser(client, RoundToNearest(item.amount));
 		}
 		
 		// Magical Killing Laser - Zombies
@@ -1435,7 +1474,7 @@ void CrazyShop_Activate(int client, int itemNum)
 	if (item.time > 0.0)
 	{
 		SetEntPropFloat(client, Prop_Send, "m_flProgressBarStartTime", GetGameTime());
-		SetEntProp(client, Prop_Send, "m_iProgressBarDuration", view_as<int>(item.time));
+		SetEntProp(client, Prop_Send, "m_iProgressBarDuration", RoundToNearest(item.time));
 	}
 	
 	PLAYER_ITEM_COUNT(client, itemNum)--;
@@ -1463,6 +1502,7 @@ Action Timer_CrazyShop_InfectionProtection(Handle timer, DataPack pack)
 	
 	PLAYER_TEMP_VAR(client, infectionProtect) = false;
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1489,6 +1529,7 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 	PLAYER_TEMP_VAR(client, superWeaponName)[0] = '\0';
 	PLAYER_TEMP_VAR(client, superWeapon) = false;
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1514,6 +1555,7 @@ Action Timer_CrazyShop_LaserProtection(Handle timer, DataPack pack)
 	
 	PLAYER_TEMP_VAR(client, laserProtect) = false;
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1539,8 +1581,9 @@ Action Timer_CrazyShop_MoreSpeed(Handle timer, DataPack pack)
 	
 	delete pack;
 	
-	SetEntPropFloat(client, Prop_Data, "m_fLaggedMovementValue", speed);
+	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", speed);
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1560,6 +1603,7 @@ Action Timer_CrazyShop_KBProtection(Handle timer, DataPack pack)
 	
 	ZR_SetClientKnockbackScale(client, 1.0);
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1579,6 +1623,7 @@ Action Timer_CrazyShop_LowerGravity(Handle timer, DataPack pack)
 	
 	SetEntityGravity(client, 1.0);
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1598,6 +1643,7 @@ Action Timer_CrazyShop_IgniteImmunity(Handle timer, DataPack pack)
 	
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	PLAYER_TEMP_VAR(client, igniteImmunity) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1619,6 +1665,7 @@ Action Timer_CrazyShop_Invisibility(Handle timer, DataPack pack)
 	
 	int nodraw = 0x20;
 	SetEntProp(client, Prop_Send, "m_fEffects", GetEntProp(client, Prop_Send, "m_fEffects") & ~nodraw);
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -1744,9 +1791,9 @@ Action Hook_PropHit(int entity, int other)
 		SDKHooks_TakeDamage(other, 0, 0, view_as<float>(damage));
 	else
 	{
-		float originalSpeed = GetEntPropFloat(other, Prop_Data, "m_fLaggedMovementValue");
+		float originalSpeed = GetEntPropFloat(other, Prop_Data, "m_flLaggedMovementValue");
 		
-		SetEntPropFloat(other, Prop_Data, "m_fLaggedMovementValue", 0.2);
+		SetEntPropFloat(other, Prop_Data, "m_flLaggedMovementValue", 0.2);
 		
 		DataPack pack = new DataPack();
 		pack.WriteCell(GetClientUserId(other));
@@ -1777,7 +1824,7 @@ Action Timer_LaserHit(Handle timer, DataPack pack)
 	float originalSpeed = pack.ReadFloat();
 	delete pack;
 	
-	SetEntPropFloat(client, Prop_Data, "m_fLaggedMovementValue", originalSpeed);
+	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", originalSpeed);
 	return Plugin_Stop;
 }
 /****************************************************************/

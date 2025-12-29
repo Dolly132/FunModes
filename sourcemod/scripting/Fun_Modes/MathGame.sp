@@ -86,7 +86,7 @@ stock void OnPluginStart_MathGame()
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, MATHGAME_CONVAR_MAX_TRIES,
-		"sm_mathgame_include_zombies", "3", "How many failed tries for zombies to answer question until they can never respawn again?",
+		"sm_mathgame_max_tries", "3", "How many failed tries for zombies to answer question until they can never respawn again?",
 		("1,2,3,4,5"), "int"
 	);
 	
@@ -138,14 +138,9 @@ stock void ZR_OnClientInfected_MathGame(int client)
 
 stock void Event_RoundStart_MathGame()
 {
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		g_bMathGameHasQuestion[i] = false;
-		g_iMathGameAnswer[i] = 0;
-		g_iMathGameFailedAnswers[i] = 0;
-		g_bMathGameDisableRespawn[i] = false;
-	}
+	MathGame_ResetPlayers();
 }
+
 stock void Event_RoundEnd_MathGame() {}
 stock void Event_PlayerSpawn_MathGame(int client)
 {
@@ -191,6 +186,7 @@ public Action Cmd_MathGameToggle(int client, int args)
 	
 	if (THIS_MODE_INFO.isOn)
 	{
+		MathGame_ResetPlayers();
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
 		MathGame_Ask();
 	}
@@ -206,11 +202,17 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		return Plugin_Continue;
 		
 	if (!IsCharNumeric(args[0]))
+	{
+		PrintToChatAll("Not numeric");
 		return Plugin_Continue;
+	}
 	
 	int num;
 	if (!StringToIntEx(args, num))
+	{
+		PrintToChatAll("Bad num");
 		return Plugin_Continue;
+	}
 	
 	if (num == g_iMathGameAnswer[client])
 	{
@@ -221,6 +223,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		return Plugin_Stop;
 	}
 	
+	PrintToChatAll("Num: %d", num);
 	return Plugin_Continue;
 }
 
@@ -254,6 +257,8 @@ void MathGame_Ask()
 
 void MathGame_SendQuestion(int client, int level)
 {
+	g_bMathGameHasQuestion[client] = true;
+	
 	char oper[2];
 	int numbers[2];
 	
@@ -293,8 +298,8 @@ Action MathGame_Timer(Handle timer, int level)
 	
 	if (!THIS_MODE_INFO.isOn)
 		return Plugin_Stop;
-		
-	CPrintToChatAll("%s Time is Up! Players who failed to answer will now be punished!");
+
+	CPrintToChatAll("%s Time is Up! Players who failed to answer will now be punished!", THIS_MODE_INFO.tag);
 	
 	float damage = THIS_MODE_INFO.cvarInfo[level + 3].cvar.FloatValue;
 	bool includeZombies = THIS_MODE_INFO.cvarInfo[MATHGAME_CONVAR_INCLUDE_ZOMBIE].cvar.BoolValue;
@@ -306,7 +311,7 @@ Action MathGame_Timer(Handle timer, int level)
 		{
 			if (ZR_IsClientHuman(i))
 			{
-				CPrintToChatAll("%s {olive}%N {lightgreen}has been damaged for not answering their math question!", i);
+				CPrintToChatAll("%s {olive}%N {lightgreen}has been damaged for not answering their math question!", THIS_MODE_INFO.tag, i);
 				SDKHooks_TakeDamage(i, 0, 0, damage);
 			}
 			else
@@ -325,6 +330,8 @@ Action MathGame_Timer(Handle timer, int level)
 			}
 		}
 	}
+	
+	MathGame_ResetPlayers();
 	
 	CreateTimer(5.0, MathGame_TimerDelay, _, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Stop;
@@ -377,4 +384,15 @@ int Menu_MathGameSettings(Menu menu, MenuAction action, int param1, int param2)
 	}
 
 	return 0;
+}
+
+void MathGame_ResetPlayers()
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		g_bMathGameHasQuestion[i] = false;
+		g_iMathGameAnswer[i] = 0;
+		g_iMathGameFailedAnswers[i] = 0;
+		g_bMathGameDisableRespawn[i] = false;
+	}
 }

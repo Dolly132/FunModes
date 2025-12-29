@@ -106,6 +106,7 @@ public void ZR_OnClientInfected(int client, int attacker, bool motherInfect)
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	g_bRoundEnd = false;
+	g_bMotherZombie = false;
 	DECLARE_FM_FORWARD(Event_RoundStart);
 }
 

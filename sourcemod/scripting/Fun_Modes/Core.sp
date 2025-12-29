@@ -154,12 +154,13 @@ these commented macros are not used for now
 		CALL_MODE_FUNC_PARAM2(%1, DoubleJump, %2, %3); \
 		CALL_MODE_FUNC_PARAM2(%1, DamageGame, %2, %3)
 */
-/* for now there are only 3 modes that use 3 params functions */
+/* for now there are only 4 modes that use 3 params functions */
 #define CALL_MODE_FUNC_PARAM3(%1,%2,%3,%4,%5) %1_%2(%3,%4,%5)
 #define DECLARE_FM_FORWARD_PARAM3(%1,%2,%3,%4) \
 		CALL_MODE_FUNC_PARAM3(%1, VIPMode, %2, %3, %4); \
 		CALL_MODE_FUNC_PARAM3(%1, DamageGame, %2, %3, %4); \
-		CALL_MODE_FUNC_PARAM3(%1, GunGame, %2, %3, %4)
+		CALL_MODE_FUNC_PARAM3(%1, GunGame, %2, %3, %4); \
+		CALL_MODE_FUNC_PARAM3(%1, CrazyShop, %2, %3, %4)
 
 /* For 4 params-functions, only crazyshop and vipmode use it for now */
 #define CALL_MODE_FUNC_PARAM4(%1,%2,%3,%4,%5,%6) %1_%2(%3,%4,%5,%6)

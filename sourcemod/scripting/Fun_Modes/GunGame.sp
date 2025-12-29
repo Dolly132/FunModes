@@ -40,8 +40,8 @@ static const char g_GunGameWeaponsList[][][] =
 {
     { "weapon_glock", "weapon_usp", "weapon_p228", "weapon_deagle", "weapon_elite", "weapon_fiveseven" }, /* Pistols */
     { "weapon_m3", "weapon_xm1014", "", "", "", "" }, /* Shotguns */
-    { "weapon_mac10", "weapon_tmp", "weapon_mp5navy", "weapon_ump45", "weapon_p90", "" }, /* SMGs */
-    { "weapon_galil", "weapon_famas", "weapon_ak47", "weapon_m4a1", "weapon_sg552", "weapon_aug" }, /* Rifles */
+    { "weapon_mac10", "weapon_ump45", "weapon_tmp", "weapon_mp5navy", "weapon_p90", "" }, /* SMGs */
+    { "weapon_galil", "weapon_famas", "weapon_sg552", "weapon_aug", "weapon_ak47", "weapon_m4a1" }, /* Rifles */
     { "weapon_m249", "", "", "", "", "" } /* The one and only :) */
 };
 
@@ -87,7 +87,7 @@ stock void OnPluginStart_GunGame()
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_PISTOLS_DAMAGE,
-		"sm_gungame_pistols_damage", "800", "The required damage needed for pistols to upgrade",
+		"sm_gungame_pistols_damage", "100", "The required damage needed for pistols to upgrade",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
@@ -117,7 +117,7 @@ stock void OnPluginStart_GunGame()
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_ENTWATCH,
-		"sm_gungame_allow_entwatch", "1", "Allow entwatch items to be picked up (1 = Enabled, 0 = Disabled)",
+		"sm_gungame_allow_entwatch", "0", "Allow entwatch items to be picked up (1 = Enabled, 0 = Disabled)",
 		("0,1"), "bool"
 	);
 	
@@ -237,6 +237,9 @@ stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
+	
+	if (!g_bMotherZombie)
+		return;
 		
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
 	{
@@ -298,6 +301,8 @@ public Action Cmd_GunGameToggle(int client, int args)
 	
 	if (THIS_MODE_INFO.isOn)
 	{
+		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
+		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 		FunModes_HookEvent(g_bEvent_PlayerSpawn, "player_spawn", Event_PlayerSpawn);
 		
 		for (int i = 1; i <= MaxClients; i++)
@@ -310,6 +315,13 @@ public Action Cmd_GunGameToggle(int client, int args)
 		
 		CPrintToChatAll("%s Your wepaon will be upgraded when you reach the required damage for each weapon type!", THIS_MODE_INFO.tag);
 		CS_TerminateRound(3.0, CSRoundEnd_Draw);
+		
+		ConVar cvar = FindConVar("zr_weapons_zmarket_rebuy");
+		if (cvar != null)
+		{
+			cvar.BoolValue = false;
+			delete cvar;
+		}
 	}
 	
 	return Plugin_Handled;
@@ -405,16 +417,16 @@ void GunGame_GiveWeapon(int client)
 	g_GunGameData[client].level[0] = weaponType;
 	g_GunGameData[client].level[1] = weaponIndex;
 	
-	GunGame_EquipWeapon(client, g_GunGameWeaponsList[weaponType][weaponIndex]);
+	GunGame_EquipWeapon(client, g_GunGameWeaponsList[weaponType][weaponIndex], weaponType > 0);
 }
 
-void GunGame_EquipWeapon(int client, const char[] weaponName)
+void GunGame_EquipWeapon(int client, const char[] weaponName, bool keepSecondary = false)
 {
 	int weapon = GivePlayerItem(client, weaponName);
 	if (!IsValidEntity(weapon))
 		return;
 	
-	GunGame_StripPlayer(client);
+	GunGame_StripPlayer(client, keepSecondary);
 	
 	g_GunGameData[client].allowEquip = true;
 	EquipPlayerWeapon(client, weapon);
@@ -425,6 +437,9 @@ void GunGame_StripPlayer(int client, bool keepSecondary = false)
 {
 	for (int i = 0; i <= 5; i++)
 	{
+		if (i == CS_SLOT_KNIFE)
+			continue;
+			
 		if (keepSecondary && i == CS_SLOT_SECONDARY)
 			continue;
 			
