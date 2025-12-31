@@ -22,14 +22,19 @@ ModeInfo g_MathGameInfo;
 #define MATHGAME_CONVAR_HARD_DAMAGE				5
 #define MATHGAME_CONVAR_INCLUDE_ZOMBIE			6
 #define MATHGAME_CONVAR_MAX_TRIES				7
-#define MATHGAME_CONVAR_TOGGLE 					8
+#define MATHGAME_CONVAR_TIME_DELAY				8
+#define MATHGAME_CONVAR_TOGGLE 					9
 
 Handle g_hMathGameTimer;
+Handle g_hMathGameTimerRepeat;
+Handle g_hMathGameTimerDelay;
 
 bool g_bMathGameHasQuestion[MAXPLAYERS + 1];
 int g_iMathGameAnswer[MAXPLAYERS + 1];
 int g_iMathGameFailedAnswers[MAXPLAYERS + 1];
 bool g_bMathGameDisableRespawn[MAXPLAYERS + 1];
+char g_sMathGameQuestion[MAXPLAYERS + 1][32];
+int g_iMathGameTime;
 
 stock void OnPluginStart_MathGame()
 {
@@ -91,6 +96,12 @@ stock void OnPluginStart_MathGame()
 	);
 	
 	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, MATHGAME_CONVAR_TIME_DELAY,
+		"sm_mathgame_time_delay", "15.0", "The delayed time after each math question",
+		("15.0,20.0,30.0,35.0"), "float"
+	);
+	
+	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, MATHGAME_CONVAR_TOGGLE,
 		"sm_mathgame_enable", "1", "Enable/Disable MathGame Mode (This differs from turning it on/off)",
 		("0,1"), "bool"
@@ -117,6 +128,7 @@ stock void OnMapEnd_MathGame()
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 	
 	g_hMathGameTimer = null;
+	g_hMathGameTimerRepeat = null;
 }
 
 stock void OnClientPutInServer_MathGame(int client)
@@ -138,7 +150,24 @@ stock void ZR_OnClientInfected_MathGame(int client)
 
 stock void Event_RoundStart_MathGame()
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
+	delete g_hMathGameTimer;
+	delete g_hMathGameTimerRepeat;
+	delete g_hMathGameTimerDelay;
+	
 	MathGame_ResetPlayers();
+	CreateTimer(30.0, Timer_StartMathGame, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+Action Timer_StartMathGame(Handle timer)
+{
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Stop;
+		
+	MathGame_Ask();
+	return Plugin_Stop;
 }
 
 stock void Event_RoundEnd_MathGame() {}
@@ -188,31 +217,34 @@ public Action Cmd_MathGameToggle(int client, int args)
 	{
 		MathGame_ResetPlayers();
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
+		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 		MathGame_Ask();
 	}
 	else
+	{
+		MathGame_ResetPlayers();
 		delete g_hMathGameTimer;
-		
+		delete g_hMathGameTimerRepeat;
+		delete g_hMathGameTimerDelay;
+	}
+	
 	return Plugin_Handled;
 }
 
 public Action OnClientSayCommand(int client, const char[] command, const char[] args)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Continue;
+	
 	if (!g_bMathGameHasQuestion[client])
 		return Plugin_Continue;
 		
-	if (!IsCharNumeric(args[0]))
-	{
-		PrintToChatAll("Not numeric");
+	if (!IsCharNumeric(args[0]) && args[0] != '-' && args[0] != '+')
 		return Plugin_Continue;
-	}
 	
 	int num;
 	if (!StringToIntEx(args, num))
-	{
-		PrintToChatAll("Bad num");
 		return Plugin_Continue;
-	}
 	
 	if (num == g_iMathGameAnswer[client])
 	{
@@ -223,7 +255,6 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		return Plugin_Stop;
 	}
 	
-	PrintToChatAll("Num: %d", num);
 	return Plugin_Continue;
 }
 
@@ -252,7 +283,13 @@ void MathGame_Ask()
 			MathGame_SendQuestion(i, level);
 	}
 	
+	delete g_hMathGameTimer;
 	g_hMathGameTimer = CreateTimer(float(time), MathGame_Timer, level, TIMER_FLAG_NO_MAPCHANGE);
+	
+	g_iMathGameTime = 0;
+	
+	delete g_hMathGameTimerRepeat;
+	g_hMathGameTimerRepeat = CreateTimer(1.0, MathGame_TimerRepeat, time, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 }
 
 void MathGame_SendQuestion(int client, int level)
@@ -269,16 +306,16 @@ void MathGame_SendQuestion(int client, int level)
 		min = 1;
 		max = (level == 0) ? 99 : 299;
 		oper = (GetRandomInt(0,1) == 0)?"+":"-";
+		
+		numbers[0] = GetRandomInt(min, max);
+		numbers[1] = GetRandomInt(min, max);
 	}
 	else
 	{
-		min = 0; // include 0 so the lucky person can easily answer it haha
-		max = 44;
+		numbers[0] = GetRandomInt(11, 44);
+		numbers[1] = GetRandomInt(0, 9);
 		oper = "*";
 	}
-	
-	numbers[0] = GetRandomInt(min, max);
-	numbers[1] = GetRandomInt(min, max);
 	
 	int answer;
 	switch (oper[0])
@@ -289,6 +326,8 @@ void MathGame_SendQuestion(int client, int level)
 	}
 	
 	g_iMathGameAnswer[client] = answer;
+	FormatEx(g_sMathGameQuestion[client], sizeof(g_sMathGameQuestion[]), "%d %s %d", numbers[0], oper, numbers[1]);
+	
 	CPrintToChat(client, "%s What is [ {white}%d {olive}%s {white}%d {lightgreen}]?", THIS_MODE_INFO.tag, numbers[0], oper, numbers[1]);
 }
 
@@ -297,7 +336,12 @@ Action MathGame_Timer(Handle timer, int level)
 	g_hMathGameTimer = null;
 	
 	if (!THIS_MODE_INFO.isOn)
+	{
+		delete g_hMathGameTimerRepeat;
 		return Plugin_Stop;
+	}
+	
+	delete g_hMathGameTimerRepeat;
 
 	CPrintToChatAll("%s Time is Up! Players who failed to answer will now be punished!", THIS_MODE_INFO.tag);
 	
@@ -333,16 +377,42 @@ Action MathGame_Timer(Handle timer, int level)
 	
 	MathGame_ResetPlayers();
 	
-	CreateTimer(5.0, MathGame_TimerDelay, _, TIMER_FLAG_NO_MAPCHANGE);
+	delete g_hMathGameTimerDelay;
+	g_hMathGameTimerDelay = CreateTimer(THIS_MODE_INFO.cvarInfo[MATHGAME_CONVAR_TIME_DELAY].cvar.FloatValue, MathGame_TimerDelay, _, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Stop;
 }
 
 Action MathGame_TimerDelay(Handle timer)
 {
+	g_hMathGameTimerDelay = null;
+	
 	if (!THIS_MODE_INFO.isOn)
 		return Plugin_Stop;
 		
 	MathGame_Ask();
+	return Plugin_Continue;
+}
+
+Action MathGame_TimerRepeat(Handle timer, int time)
+{
+	char message[128];
+	FormatEx(message, sizeof(message), "[MathGame] Time Left: %ds\n", time - g_iMathGameTime - 2);
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+		
+		char thisMsg[256];
+		strcopy(thisMsg, sizeof(thisMsg), message);
+		
+		if (g_bMathGameHasQuestion[i])
+			FormatEx(thisMsg, sizeof(thisMsg), "%s\n[ %s ]", thisMsg, g_sMathGameQuestion[i]);
+		
+		SendHudText(i, thisMsg);
+	}
+	
+	g_iMathGameTime++;
 	return Plugin_Continue;
 }
 

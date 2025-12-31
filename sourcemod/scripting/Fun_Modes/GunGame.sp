@@ -197,7 +197,7 @@ void GunGame_CheckPlayerSpawn(int client)
 		return;
 	
 	g_GunGameData[client].ResetLevel();
-	GunGame_StripPlayer(client, true);
+	GunGame_StripPlayer(client, true, true);
 }
 
 stock void Event_PlayerTeam_GunGame(Event event)
@@ -430,10 +430,11 @@ void GunGame_EquipWeapon(int client, const char[] weaponName, bool keepSecondary
 	
 	g_GunGameData[client].allowEquip = true;
 	EquipPlayerWeapon(client, weapon);
+	SetEntPropEnt(client, Prop_Data, "m_hActiveWeapon", weapon);
 	g_GunGameData[client].allowEquip = false;
 }
 
-void GunGame_StripPlayer(int client, bool keepSecondary = false)
+void GunGame_StripPlayer(int client, bool keepSecondary = false, bool giveSecondary = false)
 {
 	for (int i = 0; i <= 5; i++)
 	{
@@ -445,7 +446,12 @@ void GunGame_StripPlayer(int client, bool keepSecondary = false)
 			
 		int wp = GetPlayerWeaponSlot(client, i);
 		if (!IsValidEntity(wp))
+		{
+			if (i == CS_SLOT_SECONDARY && giveSecondary)
+				GunGame_EquipWeapon(client, g_GunGameWeaponsList[0][0], true);
+				
 			continue;
+		}
 		
 		SDKHooks_DropWeapon(client, wp);
 		RemoveEntity(wp);
@@ -454,6 +460,8 @@ void GunGame_StripPlayer(int client, bool keepSecondary = false)
 
 void GunGame_ShowRewardsMenu(int client)
 {
+	GunGame_GiveReward(client, REWARD_SPEED);
+	
 	Menu menu = new Menu(Menu_GunGame_ShowRewards);
 	menu.SetTitle("[GunGame Escape] You have completed a gungame cycle! Choose your reward!\nYou can switch your rewards");
 	
@@ -496,7 +504,7 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 				SetEntityGravity(client, g_GunGameData[client].originalGravity);
 				
 			g_GunGameData[client].originalSpeed = GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue");
-			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed + 0.1);
+			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed + 0.3);
 			
 			CPrintToChat(client, "%s You have been granted an extra speed for finishing a gungame cycle!", THIS_MODE_INFO.tag);
 		}
@@ -506,9 +514,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			/* Reset Speed */
 			if (g_GunGameData[client].originalSpeed != 0.0)
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed);
-			
+				
 			g_GunGameData[client].originalGravity = GetEntityGravity(client);
-			SetEntityGravity(client, g_GunGameData[client].originalGravity - 0.1);
+			SetEntityGravity(client, 0.5);
 			
 			CPrintToChat(client, "%s You have been granted a lower gravity for finishing a gungame cycle!", THIS_MODE_INFO.tag);
 		}
@@ -522,10 +530,14 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			/* Reset Speed */
 			if (g_GunGameData[client].originalSpeed != 0.0)
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed);
-				
+			
+			
+			g_GunGameData[client].allowEquip = true;
+			GivePlayerItem(client, "weapon_hegrenade");
 			int count = THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_HEGRENADES_COUNT].cvar.IntValue;
 			GiveGrenadesToClient(client, GrenadeType_HEGrenade, count);
-		
+			g_GunGameData[client].allowEquip = false;
+			
 			CPrintToChat(client, "%s You have been granted {olive}%d extra hegrenades {lightgreen}for finishing a gungame cycle!", THIS_MODE_INFO.tag, count);
 		}
 	}

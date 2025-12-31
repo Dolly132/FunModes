@@ -183,14 +183,14 @@ public void OnLibraryRemoved(const char[] name)
 		g_bPlugin_DynamicChannels = false;
 }
 
-float GetDistanceBetween(int origin, int target)
+float GetDistanceBetween(int origin, int target, bool squarred = false)
 {
 	float fOrigin[3], fTarget[3];
 
 	GetEntPropVector(origin, Prop_Data, "m_vecOrigin", fOrigin);
 	GetEntPropVector(target, Prop_Data, "m_vecOrigin", fTarget);
 
-	return GetVectorDistance(fOrigin, fTarget);
+	return GetVectorDistance(fOrigin, fTarget, squarred);
 }
 
 stock void BeaconPlayer(int client, int mode, float distance = 0.0, int color[4] = {0,0,0,0})
@@ -544,7 +544,7 @@ stock void SendHudText(int client, const char[] sMessage, bool isFar = false, in
 	if (isFar)
 		SetHudTextParams(-0.2, 1.0, 0.7, 255, 13, 55, 255);
 	else
-		SetHudTextParams(-0.2, 1.0, 2.0, 255, 36, 255, 13);
+		SetHudTextParams(-1.0, 0.2, 2.0, 255, 36, 255, 13);
 
 	switch(icolor)
 	{

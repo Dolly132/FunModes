@@ -13,6 +13,7 @@ bool g_bEvent_RoundEnd;
 bool g_bEvent_PlayerDeath;
 bool g_bEvent_PlayerTeam;
 bool g_bEvent_PlayerSpawn;
+bool g_bEvent_WeaponFire;
 
 /* Client SDKHook Boolens */
 bool g_bSDKHook_OnTakeDamagePost[MAXPLAYERS + 1] = { false, ... };
