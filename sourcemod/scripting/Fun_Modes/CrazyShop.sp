@@ -59,7 +59,8 @@ ModeInfo g_CrazyShopInfo;
 #define CRAZYSHOP_CONVAR_CREDITS			1
 #define CRAZYSHOP_CONVAR_SAVECREDITS		2
 #define CRAZYSHOP_CONVAR_SLOWBEACON_RADIUS	3
-#define CRAZYSHOP_CONVAR_TOGGLE 			4
+#define CRAZYSHOP_CONVAR_DISABLE_SHOP		4
+#define CRAZYSHOP_CONVAR_TOGGLE 			5
 
 enum CrazyShop_DataType
 {
@@ -104,7 +105,7 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Buy a smokegrenade", 1, 10, 0.0, 0.0, DATATYPE_NONE, ""
 	},
 	{
-		"Slow Beacon", 1, 30, -0.5, 15.0, DATATYPE_BOTH, "Speed Value (-)"
+		"Slow Beacon", 1, 30, -0.7, 15.0, DATATYPE_BOTH, "Speed Value (absolute)"
 	},
 	
 	/* Zombies Items (Team = 0) */
@@ -125,10 +126,13 @@ static CrazyShop_Item g_CrazyShopItems[] =
 	},
 	{
 		"Invisibility", 0, 15, 0.0, 15.0, DATATYPE_TIME, ""
+	},
+	{
+		"Human Pull", 0, 15, 0.0, 15.0, DATATYPE_TIME, ""
 	}
 };
 
-#define ITEMS_COUNT 11
+#define ITEMS_COUNT 14
 
 enum struct CrazyShop_PlayerData
 {
@@ -153,6 +157,9 @@ enum struct CrazyShop_PlayerData
 	Handle slowBeaconTimer;
 	float originalSpeed;
 	bool gotSlowed;
+	int grabbedTarget;
+	float grabbedDistance;
+	float originalTargetMaxSpeed;
 	
 	void Reset(bool tempVarsOnly = false)
 	{
@@ -179,6 +186,8 @@ enum struct CrazyShop_PlayerData
 		delete this.slowBeaconTimer;
 		this.originalSpeed = 0.0;
 		this.gotSlowed = false;
+		this.grabbedTarget = -1;
+		this.grabbedDistance = -1.0;
 	}
 }
 
@@ -187,6 +196,8 @@ CrazyShop_PlayerData g_CrazyShopPlayerData[MAXPLAYERS + 1];
 int g_iCrazyShopPreviousItem[MAXPLAYERS + 1];
 
 Database g_hCrazyShop_DB;
+
+float g_fLastUseTime[MAXPLAYERS + 1];
 
 /* Macros */
 /***************************************************************/
@@ -206,14 +217,14 @@ Database g_hCrazyShop_DB;
 #define PLAYER_TEMP_VAR(%1,%2)		g_CrazyShopPlayerData[%1].%2
 /***************************************************************/
 /* Laser attributes constatns: */
-#define PROP_MODEL              "models/nide/laser/laser.mdl"
+#define PROP_MODEL              "models/props/cs_office/vending_machine.mdl"
 #define PRECACHE_MOVE_SND       "nide/laser.wav"
 #define MOVE_SND                "sound/nide/laser.wav"
 
 #define LASER_DISTANCE_START    250.0
 #define LASER_DISTANCE_END      2000.0
 
-#define LASER_SPEED             1000
+#define LASER_SPEED             3000
 
 #define LASER_HEIGHT            30
 
@@ -265,6 +276,12 @@ stock void OnPluginStart_CrazyShop()
 	);
 	
 	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DISABLE_SHOP,
+		"sm_crazyshop_disable_show", "0", "Enable/Disable the !crazyshop command",
+		("0,1"), "bool"
+	);
+	
+	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_TOGGLE,
 		"sm_crazyshop_enable", "1", "Enable/Disable CrazyShop Mode (This differs from turning it on/off)",
 		("0,1"), "bool"
@@ -287,6 +304,9 @@ void OnCrazyShopModeToggle(ConVar cvar, const char[] newValue, const char[] oldV
 
 stock void OnMapStart_CrazyShop()
 {
+	if (g_iLaserBeam == -1)
+		g_iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt");
+	
 	PrecacheModel(PROP_MODEL);
 	PrecacheSound(PRECACHE_MOVE_SND);
 	
@@ -313,6 +333,8 @@ stock void OnMapEnd_CrazyShop()
 
 stock void OnClientPutInServer_CrazyShop(int client)
 {
+	g_fLastUseTime[client] = 0.0;
+	
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
@@ -327,10 +349,18 @@ stock void OnClientPutInServer_CrazyShop(int client)
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		g_bSDKHook_OnTakeDamage[client] = true;
 	}
+	
+	SDKHook(client, SDKHook_Reload, OnReload);
 }
 
 stock void OnClientDisconnect_CrazyShop(int client)
 {
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (PLAYER_TEMP_VAR(i, grabbedTarget) == client)
+			PLAYER_TEMP_VAR(i, grabbedTarget) = -1;
+	}
+	
 	if (!THIS_MODE_INFO.isOn || THIS_MODE_DB == null)
 		return;
 	
@@ -338,7 +368,7 @@ stock void OnClientDisconnect_CrazyShop(int client)
 		CrazyShop_DB_AddPlayer(client);
 	else
 		CrazyShop_DB_SaveCredits(client);
-
+	
 	CrazyShop_DB_CheckItems(client);
 	
 	PLAYER_RESET(client);
@@ -410,7 +440,10 @@ stock void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
-	if (!(1<=attacker<=MaxClients) || !ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
+	if (!(1<=attacker<=MaxClients) || !IsPlayerAlive(victim) || !IsPlayerAlive(attacker) || !ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
+		return;
+		
+	if (PLAYER_TEMP_VAR(attacker, superWeapon))
 		return;
 		
 	DAMAGE_DEALT(attacker) += RoundToNearest(damage);
@@ -510,6 +543,25 @@ stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Acti
 	}
 }
 
+Action OnReload(int client, int weapon)
+{
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Continue;
+		
+	CPrintToChatAll("ONRELOAD %N", client);
+	
+	if (!IsPlayerAlive(client) || !ZR_IsClientZombie(client))
+		return Plugin_Continue;
+		
+	float time = GetGameTime();
+	if (time < g_fLastUseTime[client])
+		return Plugin_Continue;
+	
+	g_fLastUseTime[client] = time + 5.0;
+	CrazyShop_OpenAvailableItems(client);
+	return Plugin_Continue;
+}
+
 void CrazyShop_CheckIgnite(int userid)
 {
 	int victim = GetClientOfUserId(userid);
@@ -533,6 +585,7 @@ void CrazyShop_CheckIgnite(int userid)
 	}
 }
 
+/* TODO: Handle this in FunModes.sp */
 /* This should be in FunModes.sp, but crazyshop is the only mode that's using it for now */
 public void OnClientPostAdminCheck(int client)
 {
@@ -799,6 +852,10 @@ public Action Cmd_CrazyShopToggle(int client, int args)
 			SDKHook(i, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 			g_bSDKHook_OnTakeDamagePost[i] = true;
 			g_bSDKHook_OnTakeDamage[i] = true;
+			
+			// Aside from other modes, this is for CrazyShop only
+			PrintToChatAll("Hooked Reload %N", i);
+			SDKHook(i, SDKHook_Reload, OnReload);
 		}
 	}
 	else
@@ -953,8 +1010,20 @@ void CrazyShop_OpenItemAction(int client, int action)
 	{
 		menu.SetTitle("[CrazyShop] %s - Price\nCurrent Price: %d", item.name, item.price);
 		
-		for (int i = item.price; i <= item.price * 2; i += item.price / 2)
+		for (int i = item.price, count; i <= item.price * 2; i += item.price / 4)
 		{
+			if (count <= 1)
+				i = item.price - item.price / 4;
+			
+			count++;
+			
+			if (i <= 0)
+			{
+				i += 2*(item.price / 4);
+				count--;
+				continue;
+			}
+			
 			char thisVal[3];
 			IntToString(i, thisVal, sizeof(thisVal));
 			
@@ -970,8 +1039,20 @@ void CrazyShop_OpenItemAction(int client, int action)
 	{
 		menu.SetTitle("[CrazyShop] %s - Time\nCurrent Time: %.2f", item.name, item.time);
 		
-		for (float f = item.time; f <= item.time * 1.5; f += item.time / 1.5)
+		for (float f = item.time, count; f <= item.time * 2.0; f += item.time / 4.0)
 		{
+			if (count <= 1.0)
+				f = item.time - (item.time / 4.0);
+				
+			count++;
+			
+			if (f <= 0.0)
+			{
+				f += 2*(item.time / 4.0);
+				count--;
+				continue;
+			}
+			
 			char thisVal[6];
 			FloatToString(f, thisVal, sizeof(thisVal));
 			
@@ -984,12 +1065,24 @@ void CrazyShop_OpenItemAction(int client, int action)
 	
 	if (action == 1)
 	{
-		if (item.type != DATATYPE_AMOUNT)
+		if (item.type != DATATYPE_AMOUNT && item.type != DATATYPE_BOTH)
 		{
 			menu.SetTitle("[CrazyShop] %s - Time\nCurrent Time: %.2f", item.name, item.time);
 			
-			for (float f = item.time; f <= item.time * 1.5; f += item.time / 1.5)
+			for (float f = item.time, count; f <= item.time * 2.0; f += item.time / 4.0)
 			{
+				if (count <= 1.0)
+					f = item.time - (item.time / 4.0);
+				
+				count++;
+				
+				if (f <= 0.0)
+				{
+					f += 2*(item.time / 4.0);
+					count--;
+					continue;
+				}
+				
 				char thisVal[6];
 				FloatToString(f, thisVal, sizeof(thisVal));
 				
@@ -1003,8 +1096,19 @@ void CrazyShop_OpenItemAction(int client, int action)
 		{
 			menu.SetTitle("[CrazyShop] %s - %s\nCurrent %s: %.2f", item.name, item.amountName, item.amountName, item.amount);
 			
-			for (float f = item.amount; f <= item.amount * 2; f += item.amount / 2)
+			for (float f = item.amount, count; f <= item.amount * 2; f += item.amount / 4.0)
 			{
+				if (count <= 1.0)
+					f = item.amount - (item.amount / 4.0);
+					
+				if (f <= 0.0)
+				{
+					f += 2*(item.amount / 4.0);
+					count--;
+					continue;
+				}
+				
+				count++;
 				char thisVal[6];
 				FloatToString(f, thisVal, sizeof(thisVal));
 				
@@ -1045,9 +1149,9 @@ int Menu_CrazyShop_ItemAction(Menu menu, MenuAction action, int param1, int para
 			
 			switch (itemAction)
 			{
-				case 0: CrazyShop_UpdateItemData(param1, itemAction, "price", data[1]);
-				case 1: CrazyShop_UpdateItemData(param1, itemAction, "amount", data[1]);
-				case 2: CrazyShop_UpdateItemData(param1, itemAction, "time", data[1]);
+				case 0: CrazyShop_UpdateItemData(param1, g_iCrazyShopPreviousItem[param1], "price", data[1]);
+				case 1: CrazyShop_UpdateItemData(param1, g_iCrazyShopPreviousItem[param1], "amount", data[1]);
+				case 2: CrazyShop_UpdateItemData(param1, g_iCrazyShopPreviousItem[param1], "time", data[1]);
 			}
 		}
 	}
@@ -1148,7 +1252,13 @@ Action Cmd_CrazyShopMenu(int client, int args)
 	
 	if (!client)
 		return Plugin_Handled;
-		
+	
+	if (THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_DISABLE_SHOP].cvar.BoolValue)
+	{
+		CReplyToCommand(client, "%s The shop is currently disabled!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+	
 	CrazyShop_OpenMenu(client);
 	return Plugin_Handled;
 }
@@ -1304,9 +1414,16 @@ void CrazyShop_OpenAvailableItems(int client, bool forceMenu = false)
 	Menu menu;
 	int lastItem;
 	
+	if (!IsPlayerAlive(client))
+	{
+		CPrintToChat(client, "%s you have to be alive to use this command!", THIS_MODE_INFO.tag);
+		return;
+	}
+	
 	for (int i = 0; i < sizeof(CrazyShop_PlayerData::itemsCount); i++)
 	{
-		if (PLAYER_ITEM_COUNT(client, i))
+		if (((g_CrazyShopItems[i].team == 0 && ZR_IsClientZombie(client)) || 
+			(g_CrazyShopItems[i].team == 1 && ZR_IsClientHuman(client))) && PLAYER_ITEM_COUNT(client, i))
 		{
 			lastItem = i;
 			itemsCount++;
@@ -1369,6 +1486,27 @@ int Menu_AvailableItems(Menu menu, MenuAction action, int param1, int param2)
 				return 0;
 			}
 			
+			if (!IsPlayerAlive(param1))
+			{
+				CPrintToChat(param1, "%s You have to be alive to activate items!", THIS_MODE_INFO.tag);
+				return -1;
+			}
+			
+			CrazyShop_Item item;
+			item = g_CrazyShopItems[itemNum];
+			bool isZombie = ZR_IsClientZombie(param1);
+			if (item.team == 0 && !isZombie)
+			{
+				CPrintToChat(param1, "%s This item is for zombies only!", THIS_MODE_INFO.tag);
+				return -1;
+			}
+		
+			if (item.team == 1 && isZombie)
+			{	
+				CPrintToChat(param1, "%s This item is for humans only!", THIS_MODE_INFO.tag);
+				return -1;
+			}
+			
 			CrazyShop_Activate(param1, itemNum);
 			CrazyShop_OpenAvailableItems(param1, true);
 		}
@@ -1414,7 +1552,10 @@ void CrazyShop_Activate(int client, int itemNum)
 			int maxHealth = GetEntProp(client, Prop_Data, "m_iMaxHealth");
 			SetEntProp(client, Prop_Data, "m_iMaxHealth", maxHealth + RoundToNearest(item.amount));
 			
-			SetEntityHealth(client, GetClientHealth(client) + RoundToNearest(item.amount));
+			int health = RoundToNearest(item.amount);
+			SetEntityHealth(client, GetClientHealth(client) + health);
+			
+			CPrintToChat(client, "%s You have given yourself {olive}%d {lightgreen}more HP", THIS_MODE_INFO.tag, health);
 		}
 		
 		// Infection Protection - Humans
@@ -1519,20 +1660,14 @@ void CrazyShop_Activate(int client, int itemNum)
 		// Slow Beacon
 		case 6:
 		{
+			int userid = GetClientUserId(client);
+			
 			PLAYER_ITEM_ACTIVE(client, itemNum) = true;
 			
-			DataPack pack = new DataPack();
-			
-			float beaconRadius = THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_SLOWBEACON_RADIUS].cvar.FloatValue;
-			
-			pack.WriteCell(GetClientUserId(client));
-			pack.WriteCell(itemNum);
-			pack.WriteFloat(beaconRadius);
-			
 			delete PLAYER_TEMP_VAR(client, slowBeaconTimer);
-			PLAYER_TEMP_VAR(client, slowBeaconTimer) = CreateTimer(0.5, Timer_SlowBeaconRepeat, pack, TIMER_REPEAT);
+			PLAYER_TEMP_VAR(client, slowBeaconTimer) = CreateTimer(0.1, Timer_SlowBeaconRepeat, userid, TIMER_REPEAT);
 			
-			CreateTimer(item.time, Timer_CrazyShop_SlowBeacon, pack, TIMER_FLAG_NO_MAPCHANGE);
+			CreateTimer(item.time, Timer_CrazyShop_SlowBeacon, userid, TIMER_FLAG_NO_MAPCHANGE);
 			
 			CPrintToChat(client, "%s You have activated slow beacon, you can slow down the zombies if they got close to your beacon!", THIS_MODE_INFO.tag);
 		}
@@ -1606,7 +1741,7 @@ void CrazyShop_Activate(int client, int itemNum)
 			CPrintToChat(client, "%s You have activated ignite immunity, you won't be on fire for now!", THIS_MODE_INFO.tag);
 		}
 		
-		// Invisibility
+		// Invisibility - Zombies
 		case 12:
 		{
 			PLAYER_ITEM_ACTIVE(client, itemNum) = true;
@@ -1622,6 +1757,29 @@ void CrazyShop_Activate(int client, int itemNum)
 			CreateTimer(item.time, Timer_CrazyShop_Invisibility, pack, TIMER_FLAG_NO_MAPCHANGE);
 			
 			CPrintToChat(client, "%s You are invisibile now, shhh!", THIS_MODE_INFO.tag);
+		}
+		
+		// Human Pull - Zombies
+		case 13:
+		{
+			int target = GetClientAimTarget(client);
+			if (target == -1 || !IsPlayerAlive(target) || !ZR_IsClientHuman(target))
+			{
+				CPrintToChat(client, "%s Canceling the activation of this item, please aim at a human!", THIS_MODE_INFO.tag);
+				return;
+			}
+			
+			PLAYER_ITEM_ACTIVE(client, itemNum) = true;
+			
+			CrazyShop_StartGrab(client, target);
+			
+			DataPack pack = new DataPack();
+			pack.WriteCell(GetClientUserId(client));
+			pack.WriteCell(itemNum);
+			
+			CreateTimer(item.time, Timer_CrazyShop_Pull, pack, TIMER_FLAG_NO_MAPCHANGE);
+			
+			CPrintToChat(client, "%s You are now pulling a human xD", THIS_MODE_INFO.tag);
 		}
 	}
 	
@@ -1743,57 +1901,38 @@ Action Timer_CrazyShop_UnlimitedAmmo(Handle timer, DataPack pack)
 	
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	PLAYER_TEMP_VAR(client, unlimitedAmmo) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
-Action Timer_CrazyShop_SlowBeacon(Handle timer, DataPack pack)
-{
-	if (pack == null)
-	{
-		CrazyShop_ResetSpeed();
-		return Plugin_Stop;
-	}
-		
-	pack.Reset();
-	
-	int client = GetClientOfUserId(pack.ReadCell());
+Action Timer_CrazyShop_SlowBeacon(Handle timer, int userid)
+{	
+	int client = GetClientOfUserId(userid);
 	if (!client)
 	{
-		delete pack;
 		CrazyShop_ResetSpeed();
 		return Plugin_Stop;
 	}
 	
-	int itemNum = pack.ReadCell();
-	delete pack;
 	PLAYER_TEMP_VAR(client, slowBeaconTimer) = null;
-	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	PLAYER_ITEM_ACTIVE(client, 6) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
-Action Timer_SlowBeaconRepeat(Handle timer, DataPack pack)
+Action Timer_SlowBeaconRepeat(Handle timer, int userid)
 {
-	if (pack == null)
-	{
-		CrazyShop_ResetSpeed();
-		return Plugin_Stop;
-	}
-	
-	pack.Reset();
-	
-	int client = GetClientOfUserId(pack.ReadCell());
+	int client = GetClientOfUserId(userid);
 	if (!client)
 	{
-		delete pack;
 		CrazyShop_ResetSpeed();
 		return Plugin_Stop;
 	}
 	
-	int itemNum = pack.ReadCell();
+	int itemNum = 6;
 	
 	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
 	{
-		delete pack;
 		PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 		CrazyShop_ResetSpeed();
 		PLAYER_TEMP_VAR(client, slowBeaconTimer) = null;
@@ -1802,7 +1941,6 @@ Action Timer_SlowBeaconRepeat(Handle timer, DataPack pack)
 	
 	if (!IsPlayerAlive(client) || ZR_IsClientZombie(client))
 	{
-		delete pack;
 		PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 		CrazyShop_ResetSpeed();
 		PLAYER_TEMP_VAR(client, slowBeaconTimer) = null;
@@ -1811,17 +1949,13 @@ Action Timer_SlowBeaconRepeat(Handle timer, DataPack pack)
 	
 	if (!PLAYER_ITEM_ACTIVE(client, itemNum))
 	{
-		delete pack;
 		CrazyShop_ResetSpeed();
 		PLAYER_TEMP_VAR(client, slowBeaconTimer) = null;
 		return Plugin_Stop;
 	}
 	
-	float radius = pack.ReadFloat();
-	
-	delete pack;
-	
-	BeaconPlayer(client, 0, radius, { 255, 255, 255, 255 } );
+	float beaconRadius = THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_SLOWBEACON_RADIUS].cvar.FloatValue;
+	BeaconPlayer(client, 0, beaconRadius, { 255, 255, 255, 255 } );
 	
 	// check for distance
 	for (int i = 1; i <= MaxClients; i++)
@@ -1830,11 +1964,11 @@ Action Timer_SlowBeaconRepeat(Handle timer, DataPack pack)
 			continue;
 		
 		float squarredDistance = GetDistanceBetween(client, i, true);
-		if (!PLAYER_TEMP_VAR(i, gotSlowed) && squarredDistance <= ((radius/2.0))*(radius/2.0))
+		if (!PLAYER_TEMP_VAR(i, gotSlowed) && squarredDistance <= ((beaconRadius/2.0)*(beaconRadius/2.0)))
 		{
 			PLAYER_TEMP_VAR(i, gotSlowed) = true;
 			PLAYER_TEMP_VAR(i, originalSpeed) = GetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue");
-			SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", 0.2);
+			SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", g_CrazyShopItems[itemNum].amount);
 		}
 		else
 		{
@@ -1979,6 +2113,104 @@ Action Timer_CrazyShop_Invisibility(Handle timer, DataPack pack)
 	return Plugin_Stop;
 }
 
+Action Timer_CrazyShop_Pull(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	int client = GetClientOfUserId(pack.ReadCell());
+	if (!client)
+	{
+		delete pack;
+		return Plugin_Stop;
+	}
+	
+	if (PLAYER_TEMP_VAR(client, grabbedTarget) == -1)
+	{
+		delete pack;
+		return Plugin_Stop;
+	}
+	
+	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
+	
+	PLAYER_ITEM_ACTIVE(target, 1) = false;
+	PLAYER_TEMP_VAR(target, infectionProtect) = false;
+			
+	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(client, originalTargetMaxSpeed));
+	
+	int itemNum = pack.ReadCell();
+	delete pack;
+	
+	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	PLAYER_TEMP_VAR(client, grabbedTarget) = -1;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+	return Plugin_Stop;
+}
+
+void CrazyShop_StartGrab(int client, int target)
+{
+	PLAYER_ITEM_ACTIVE(target, 1) = true;
+	PLAYER_TEMP_VAR(target, infectionProtect) = true;
+	
+	PLAYER_TEMP_VAR(client, grabbedTarget) = target;
+	
+	// we dont care about optimization here as this is called once only
+	PLAYER_TEMP_VAR(client, grabbedDistance) = GetDistanceBetween(client, target, false);
+	
+	PLAYER_TEMP_VAR(client, originalTargetMaxSpeed) = GetEntPropFloat(target, Prop_Send, "m_flMaxspeed");
+	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);
+	
+	CreateTimer(0.05, CrazyShop_Timer_Grabbing, client, TIMER_REPEAT);
+}
+
+Action CrazyShop_Timer_Grabbing(Handle timer, int client)
+{
+	int itemNum = 13;
+	if (!PLAYER_ITEM_ACTIVE(client, itemNum))
+		return Plugin_Stop;
+	
+	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
+	if (target == -1)
+		return Plugin_Stop;
+	
+	float speed = 8.0;
+	float clientEyePos[3], clientEyeAngles[3], velocity[3], targetLoc[3];
+	
+	float distance = PLAYER_TEMP_VAR(client, grabbedDistance);
+	
+	GetClientEyePosition(client, clientEyePos);
+	GetClientEyeAngles(client, clientEyeAngles);
+	GetEntPropVector(target, Prop_Data, "m_vecOrigin", targetLoc);
+	
+	TR_TraceRayFilter(clientEyePos, clientEyeAngles, MASK_ALL, RayType_Infinite, TraceRayTryToHit); // Find where the player is aiming
+	TR_GetEndPosition(velocity); // Get the end position of the trace ray
+	
+	distance += speed * 10.0;
+	
+	SubtractVectors(velocity, clientEyePos, velocity);
+	NormalizeVector(velocity, velocity);
+	
+	ScaleVector(velocity, distance);
+	AddVectors(velocity, clientEyePos, velocity);
+	SubtractVectors(velocity, targetLoc, velocity);
+	ScaleVector(velocity, speed * 3 / 5);
+	
+	TeleportEntity(target, NULL_VECTOR, NULL_VECTOR, velocity);
+	
+	targetLoc[2] += 45;
+	
+	TE_SetupBeamPoints(clientEyePos, targetLoc, g_iLaserBeam, 0, 0, 66, 0.2, 1.0, 10.0, 0, 0.0, {255,255,255,255}, 0);
+	TE_SendToAll();
+	
+	return Plugin_Continue;
+}
+
+bool TraceRayTryToHit(int entity, int mask)
+{
+	if (entity > 0 && entity <= MaxClients)
+		return false;
+		
+	return true;
+}
+
 /* Special Thanks to https://github.com/srcdslab/sm-plugin-Laser */
 /* Minor Edits by Dolly */
 /*******************************************************************/
@@ -2001,19 +2233,11 @@ void CrazyShop_ThrowLaser(int client, int damage)
 	if (moveLinear == -1)
 		return;
 	
-	float currentTime = GetGameTime();
+	int currentTime = RoundToNearest(GetGameTime());
+	int userid = GetClientUserId(client);
 	
-	char propName[32];
-	FormatEx(propName, sizeof(propName), "%d_FM_PROP_LASER_%d_%f", damage, GetClientUserId(client), currentTime);
-	int prop = CrazyShop_CreateProp(propName, moveLinear);
-	if (prop == -1)
-	{
-		RemoveEntity(moveLinear);
-		return;
-	}
-		
-	char targetName[20];
-	FormatEx(targetName, sizeof(targetName), "FM_LASER_%d_%f", GetClientUserId(client), currentTime);
+	char targetName[64];
+	FormatEx(targetName, sizeof(targetName), "FM_LASER_%d_%d", userid, currentTime);
 	
 	DispatchKeyValue(moveLinear, "targetname", targetName);
 	DispatchKeyValueInt(moveLinear, "spawnflags", 8);
@@ -2021,23 +2245,43 @@ void CrazyShop_ThrowLaser(int client, int damage)
 	DispatchKeyValueInt(moveLinear, "speed", LASER_SPEED);
 	DispatchKeyValue(moveLinear, "startsound", PRECACHE_MOVE_SND);
 	DispatchKeyValueFloat(moveLinear, "startposition", 0.0);
+	DispatchKeyValueFloat(moveLinear, "movedistance", 1000.0);
+	DispatchKeyValueInt(moveLinear, "speed", 100);
 	
-	char output[sizeof(propName) + 15];
-	FormatEx(output, sizeof(output), "%s:Kill::0:-1", propName);
+	char propName[64];
+	FormatEx(propName, sizeof(propName), "%d_FM_PROP_LASER_%d_%d", damage, userid, currentTime);
 	
-	DispatchKeyValue(moveLinear, "OnFullyOpen", output);
+	char output[sizeof(propName) + 32];
+	FormatEx(output, sizeof(output), "OnFullyOpen %s,Kill,,0,-1", propName);
 	
-	FormatEx(output, sizeof(output), "!self:Kill::0:-1");
-	DispatchKeyValue(moveLinear, "OnFullyOpen", output);
+	SetVariantString(output);
+	AcceptEntityInput(moveLinear, "AddOutput");
+
+	output = "OnFullyOpen !self,Kill,,0,-1";
+	SetVariantString(output);
+	AcceptEntityInput(moveLinear, "AddOutput");
 	
-	TeleportEntity(moveLinear, startPos, NULL_VECTOR, NULL_VECTOR);
+	TeleportEntity(moveLinear, startPos, vecEyeAngles, NULL_VECTOR);
+	
+	int prop = CrazyShop_CreateProp(propName, targetName);
+	if (prop == -1)
+	{
+		RemoveEntity(moveLinear);
+		return;
+	}
 	
 	DispatchSpawn(moveLinear);
+	DispatchSpawn(prop);
+	
+	TeleportEntity(prop, startPos, vecEyeAngles);
+	
+	SetVariantString("!activator");
+	AcceptEntityInput(prop, "SetParent", moveLinear);
 	
 	AcceptEntityInput(moveLinear, "Open");
 }
 
-stock int CrazyShop_CreateProp(const char[] name, int moveLinear)
+stock int CrazyShop_CreateProp(const char[] name, const char[] moveLinear)
 {
 	int ent = CreateEntityByName("prop_dynamic_override"); 
 	if (ent == -1)
@@ -2048,14 +2292,12 @@ stock int CrazyShop_CreateProp(const char[] name, int moveLinear)
 	DispatchKeyValue(ent, "model", PROP_MODEL);
 	DispatchKeyValue(ent, "disableshadows", "1");
 	DispatchKeyValue(ent, "disablereceiveshadows", "1");
+	DispatchKeyValue(ent, "parentname", moveLinear);
 	
 	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 8);
 	SetEntProp(ent, Prop_Data, "m_nSolidType", 2);
 	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 2);
 	SDKHook(ent, SDKHook_StartTouch, Hook_PropHit);
-	
-	SetVariantInt(moveLinear);
-	AcceptEntityInput(ent, "SetParent");
 	
 	return ent;
 }
@@ -2139,7 +2381,7 @@ Action Timer_LaserHit(Handle timer, DataPack pack)
 }
 
 /****************************************************************/
-/* Maybe move this to FunModes.sp? */
+/* TODO: Maybe move this to FunModes.sp? */
 public Action ZR_OnClientInfect(int &client, int &attacker, bool &motherInfect)
 {
 	if (!THIS_MODE_INFO.isOn)

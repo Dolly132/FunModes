@@ -178,6 +178,8 @@ public Action Cmd_DamageGameToggle(int client, int args)
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
+			g_iDealtDamage[i] = -1;
+			
 			if (!IsClientInGame(i))
 				continue;
 			

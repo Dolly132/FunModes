@@ -49,7 +49,8 @@ enum GunGame_Reward
 {
 	REWARD_SPEED = 0,
 	REWARD_GRAVITY,
-	REWARD_HEGRENADES
+	REWARD_HEGRENADES,
+	REWARD_NONE
 };
 
 enum struct GunGame_Data
@@ -73,6 +74,8 @@ enum struct GunGame_Data
 }
 
 GunGame_Data g_GunGameData[MAXPLAYERS + 1];
+
+Handle g_hGunGameSDKCall;
 
 stock void OnPluginStart_GunGame()
 {
@@ -139,6 +142,28 @@ stock void OnPluginStart_GunGame()
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 	
 	THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_TOGGLE].cvar.AddChangeHook(OnGunGameModeToggle);
+	
+	GameData gd = new GameData("FunModes.games.txt");
+	
+	int offset = gd.GetOffset("Weapon_Switch");
+	if (offset == -1)
+	{
+		LogError("[FM-%s] Could not find the offset of \"Weapon_Switch\", some features may be neglected", THIS_MODE_INFO.name);
+		return;
+	}
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetVirtual(offset);
+	
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
+	
+	g_hGunGameSDKCall = EndPrepSDKCall();
+	
+	if (g_hGunGameSDKCall == null)
+		LogError("[FM-%s] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle", THIS_MODE_INFO.name);
+
+	delete gd;
 }
 
 void OnGunGameModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
@@ -188,16 +213,18 @@ stock void Event_RoundStart_GunGame() {}
 stock void Event_RoundEnd_GunGame() {}
 stock void Event_PlayerSpawn_GunGame(int client)
 {
-	RequestFrame(GunGame_CheckPlayerSpawn, client);
+	CreateTimer(1.0, Timer_GunGame_CheckPlayerSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-void GunGame_CheckPlayerSpawn(int client)
+Action Timer_GunGame_CheckPlayerSpawn(Handle timer, int userid)
 {
-	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
-		return;
-	
+	int client = GetClientOfUserId(userid);
+	if (!client)
+		return Plugin_Stop;
+		
 	g_GunGameData[client].ResetLevel();
-	GunGame_StripPlayer(client, true, true);
+	GunGame_EquipWeapon(client, g_GunGameWeaponsList[0][GetRandomInt(0, 1)]);
+	return Plugin_Stop;
 }
 
 stock void Event_PlayerTeam_GunGame(Event event)
@@ -239,6 +266,9 @@ stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 		return;
 	
 	if (!g_bMotherZombie)
+		return;
+	
+	if (ZR_IsClientZombie(client))
 		return;
 		
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
@@ -311,9 +341,14 @@ public Action Cmd_GunGameToggle(int client, int args)
 				continue;
 			
 			OnClientPutInServer_GunGame(i);
+			if (view_as<int>(g_GunGameData[i].reward) < view_as<int>(REWARD_HEGRENADES))
+			{
+				GunGame_GiveReward(i, REWARD_NONE);
+				g_GunGameData[i].reward = REWARD_NONE;
+			}
 		}
 		
-		CPrintToChatAll("%s Your wepaon will be upgraded when you reach the required damage for each weapon type!", THIS_MODE_INFO.tag);
+		CPrintToChatAll("%s Your weapon will be upgraded when you reach the required damage for each weapon type!", THIS_MODE_INFO.tag);
 		CS_TerminateRound(3.0, CSRoundEnd_Draw);
 		
 		ConVar cvar = FindConVar("zr_weapons_zmarket_rebuy");
@@ -323,7 +358,7 @@ public Action Cmd_GunGameToggle(int client, int args)
 			delete cvar;
 		}
 	}
-	
+
 	return Plugin_Handled;
 }
 
@@ -430,7 +465,10 @@ void GunGame_EquipWeapon(int client, const char[] weaponName, bool keepSecondary
 	
 	g_GunGameData[client].allowEquip = true;
 	EquipPlayerWeapon(client, weapon);
-	SetEntPropEnt(client, Prop_Data, "m_hActiveWeapon", weapon);
+
+	if (g_hGunGameSDKCall != null)
+		SDKCall(g_hGunGameSDKCall, client, weapon, 0);
+
 	g_GunGameData[client].allowEquip = false;
 }
 
@@ -521,7 +559,7 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			CPrintToChat(client, "%s You have been granted a lower gravity for finishing a gungame cycle!", THIS_MODE_INFO.tag);
 		}
 		
-		default:
+		case REWARD_HEGRENADES:
 		{
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
@@ -531,14 +569,24 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			if (g_GunGameData[client].originalSpeed != 0.0)
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed);
 			
-			
 			g_GunGameData[client].allowEquip = true;
 			GivePlayerItem(client, "weapon_hegrenade");
 			int count = THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_HEGRENADES_COUNT].cvar.IntValue;
-			GiveGrenadesToClient(client, GrenadeType_HEGrenade, count);
+			GiveGrenadesToClient(client, GrenadeType_HEGrenade, count-1);
 			g_GunGameData[client].allowEquip = false;
 			
 			CPrintToChat(client, "%s You have been granted {olive}%d extra hegrenades {lightgreen}for finishing a gungame cycle!", THIS_MODE_INFO.tag, count);
+		}
+		
+		default:
+		{
+			/* Reset Gravity */
+			if (g_GunGameData[client].originalGravity != 0.0)
+				SetEntityGravity(client, g_GunGameData[client].originalGravity);
+				
+			/* Reset Speed */
+			if (g_GunGameData[client].originalSpeed != 0.0)
+				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed);
 		}
 	}
 }

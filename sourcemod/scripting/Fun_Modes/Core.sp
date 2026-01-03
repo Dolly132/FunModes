@@ -30,6 +30,7 @@ int g_ColorDefault[4] = {255, 215, 55, 255}; // default color
 /* Sprites Indexes Integers */
 int g_LaserSprite = -1;
 int g_HaloSprite = -1;
+int g_iLaserBeam = -1;
 
 /* Library Checking Booleans */
 bool g_bPlugin_DynamicChannels = false;

@@ -41,7 +41,7 @@ public void OnPluginStart()
 
 	g_cvHUDChannel = CreateConVar("sm_funmodes_hud_channel", "4", "The channel for the hud if using DynamicChannels", _, true, 0.0, true, 5.0);
 
-	g_arModesInfo = new ArrayList(ByteCountToCells(256));
+	g_arModesInfo = new ArrayList(ByteCountToCells(300));
 	
 	DECLARE_FM_FORWARD(OnPluginStart);
 
@@ -544,7 +544,7 @@ stock void SendHudText(int client, const char[] sMessage, bool isFar = false, in
 	if (isFar)
 		SetHudTextParams(-0.2, 1.0, 0.7, 255, 13, 55, 255);
 	else
-		SetHudTextParams(-1.0, 0.2, 2.0, 255, 36, 255, 13);
+		SetHudTextParams(-1.0, 0.1, 2.0, 255, 36, 255, 13);
 
 	switch(icolor)
 	{
