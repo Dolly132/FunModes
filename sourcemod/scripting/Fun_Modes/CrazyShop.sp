@@ -119,7 +119,7 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Lower Gravity", 0, 10, -0.2, 15.0, DATATYPE_BOTH, "Gravity Value (-)"
 	},
 	{
-		"Magical Machine Thrower", 0, 15, 20.0, 0.0, DATATYPE_AMOUNT, "Damage"
+		"Hurting Machine", 0, 15, 20.0, 15.0, DATATYPE_BOTH, "Damage"
 	},
 	{
 		"Ignite Immunity", 0, 10, 0.0, 20.0, DATATYPE_TIME, ""
@@ -160,6 +160,7 @@ enum struct CrazyShop_PlayerData
 	int grabbedTarget;
 	float grabbedDistance;
 	float originalTargetMaxSpeed;
+	float lastUse;
 	
 	void Reset(bool tempVarsOnly = false)
 	{
@@ -188,6 +189,7 @@ enum struct CrazyShop_PlayerData
 		this.gotSlowed = false;
 		this.grabbedTarget = -1;
 		this.grabbedDistance = -1.0;
+		this.lastUse = 0.0;
 	}
 }
 
@@ -196,8 +198,6 @@ CrazyShop_PlayerData g_CrazyShopPlayerData[MAXPLAYERS + 1];
 int g_iCrazyShopPreviousItem[MAXPLAYERS + 1];
 
 Database g_hCrazyShop_DB;
-
-float g_fLastUseTime[MAXPLAYERS + 1];
 
 /* Macros */
 /***************************************************************/
@@ -333,8 +333,6 @@ stock void OnMapEnd_CrazyShop()
 
 stock void OnClientPutInServer_CrazyShop(int client)
 {
-	g_fLastUseTime[client] = 0.0;
-	
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
@@ -349,8 +347,6 @@ stock void OnClientPutInServer_CrazyShop(int client)
 		SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		g_bSDKHook_OnTakeDamage[client] = true;
 	}
-	
-	SDKHook(client, SDKHook_Reload, OnReload);
 }
 
 stock void OnClientDisconnect_CrazyShop(int client)
@@ -543,25 +539,6 @@ stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Acti
 	}
 }
 
-Action OnReload(int client, int weapon)
-{
-	if (!THIS_MODE_INFO.isOn)
-		return Plugin_Continue;
-		
-	CPrintToChatAll("ONRELOAD %N", client);
-	
-	if (!IsPlayerAlive(client) || !ZR_IsClientZombie(client))
-		return Plugin_Continue;
-		
-	float time = GetGameTime();
-	if (time < g_fLastUseTime[client])
-		return Plugin_Continue;
-	
-	g_fLastUseTime[client] = time + 5.0;
-	CrazyShop_OpenAvailableItems(client);
-	return Plugin_Continue;
-}
-
 void CrazyShop_CheckIgnite(int userid)
 {
 	int victim = GetClientOfUserId(userid);
@@ -582,6 +559,41 @@ void CrazyShop_CheckIgnite(int userid)
 			if (strcmp(className, "entityflame") == 0)
 				RemoveEntity(effect);
 		}
+	}
+}
+
+stock void OnPlayerRunCmdPost_CrazyShop(int client, int buttons, int impulse)
+{
+	if (!THIS_MODE_INFO.isOn)
+		return;
+	
+	if (!IsPlayerAlive(client))
+		return;
+		
+	float currentTime = GetGameTime();
+	if (currentTime <= PLAYER_TEMP_VAR(client, lastUse))
+		return;
+		
+	// RELOAD shortcut for zombies, FLASHLIGHT shortcut for humans
+	bool isZombie = ZR_IsClientZombie(client);
+	
+	if (buttons & IN_RELOAD)
+	{
+		if (!isZombie)
+			return;
+			
+		PLAYER_TEMP_VAR(client, lastUse) = currentTime + 2;
+		CrazyShop_OpenAvailableItems(client);
+	}
+	
+	// https://github.com/ValveSoftware/source-sdk-2013/blob/7191ecc418e28974de8be3a863eebb16b974a7ef/src/game/server/player.cpp#L6073
+	if (impulse == 100)
+	{
+		if (isZombie)
+			return;
+			
+		PLAYER_TEMP_VAR(client, lastUse) = currentTime + 2;
+		CrazyShop_OpenAvailableItems(client);	
 	}
 }
 
@@ -838,7 +850,7 @@ public Action Cmd_CrazyShopToggle(int client, int args)
 		CPrintToChatAll("%s Earn credits by defending and shooting the zombies!", THIS_MODE_INFO.tag);
 		CPrintToChatAll("%s Type {olive}!crazyshop {lightgreen}to open the Shop Menu and buy powerful items!", THIS_MODE_INFO.tag);
 		
-		if (THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_SAVECREDITS].cvar.BoolValue)
+		if (THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_SAVECREDITS].cvar.BoolValue && THIS_MODE_DB == null)
 			Database.Connect(CrazyShop_DB_OnConnect, CRAZYSHOP_DB_NAME);
 			
 		CrazyShop_GetItems();
@@ -852,11 +864,10 @@ public Action Cmd_CrazyShopToggle(int client, int args)
 			SDKHook(i, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 			g_bSDKHook_OnTakeDamagePost[i] = true;
 			g_bSDKHook_OnTakeDamage[i] = true;
-			
-			// Aside from other modes, this is for CrazyShop only
-			PrintToChatAll("Hooked Reload %N", i);
-			SDKHook(i, SDKHook_Reload, OnReload);
 		}
+		
+		// Restart the round
+		CS_TerminateRound(2.0, CSRoundEnd_Draw);
 	}
 	else
 		delete THIS_MODE_DB;
@@ -1332,6 +1343,7 @@ int Menu_CrazyShop(Menu menu, MenuAction action, int param1, int param2)
 			PLAYER_CREDITS(param1) -= g_CrazyShopItems[param2].price;
 			PLAYER_ITEM_COUNT(param1, param2) += 1;
 			CPrintToChat(param1, "%s You have successfully bought {olive}%s, {lightgreen}Type !myitems to activate it!", THIS_MODE_INFO.tag, g_CrazyShopItems[param2].name);
+			CPrintToChat(param1, "{lightgreen}You can also press the {olive}Reload button {lightgreen}if you were a zombie\nOr {olive}FlashLight {lightgreen}if you were a human");
 			CrazyShop_OpenMenu(param1);
 		}
 	}
@@ -1409,7 +1421,10 @@ int Menu_CrazyShop_Gift(Menu menu, MenuAction action, int param1, int param2)
 
 void CrazyShop_OpenAvailableItems(int client, bool forceMenu = false)
 {
-	int itemsCount = false;
+	if (!g_bMotherZombie || g_bRoundEnd)
+		return;
+	
+	int itemsCount = 0;
 	
 	Menu menu;
 	int lastItem;
@@ -1720,10 +1735,27 @@ void CrazyShop_Activate(int client, int itemNum)
 			CPrintToChat(client, "%s You have been given lower gravity, use it wisely!", THIS_MODE_INFO.tag);
 		}
 		
-		// Magical Machine Thrower - Zombies
+		// Hurting Machine - Zombies
 		case 10:
-		{	
-			CrazyShop_ThrowLaser(client, RoundToNearest(item.amount));
+		{
+			int userid = GetClientOfUserId(client);
+			char propName[64];
+			FormatEx(propName, sizeof(propName), "%d_FM_PROP_%d_%d", RoundToNearest(item.amount), userid, GetGameTime());
+
+			int prop = CrazyShop_CreateProp(propName);
+			if (prop == -1)
+			{
+				CPrintToChat(client, "%s Failed to activate this item, try again later", THIS_MODE_INFO.tag);
+				return;
+			}
+			
+			CrazyShop_ThrowProp(client, prop);
+			
+			DataPack pack = new DataPack();
+			pack.WriteCell(userid);
+			pack.WriteCell(EntIndexToEntRef(prop));
+			
+			CreateTimer(item.time, Timer_CrazyShop_HurtingMachine, pack, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
 		// Ignite Immunity - Zombies
@@ -2182,7 +2214,7 @@ Action CrazyShop_Timer_Grabbing(Handle timer, int client)
 	
 	TR_TraceRayFilter(clientEyePos, clientEyeAngles, MASK_ALL, RayType_Infinite, TraceRayTryToHit); // Find where the player is aiming
 	TR_GetEndPosition(velocity); // Get the end position of the trace ray
-	
+
 	distance += speed * 10.0;
 	
 	SubtractVectors(velocity, clientEyePos, velocity);
@@ -2203,87 +2235,61 @@ Action CrazyShop_Timer_Grabbing(Handle timer, int client)
 	return Plugin_Continue;
 }
 
-bool TraceRayTryToHit(int entity, int mask)
+stock bool TraceRayTryToHit(int entity, int mask)
 {
+	#pragma unused mask
 	if (entity > 0 && entity <= MaxClients)
 		return false;
 		
 	return true;
 }
 
-/* Special Thanks to https://github.com/srcdslab/sm-plugin-Laser */
-/* Minor Edits by Dolly */
 /*******************************************************************/
-void CrazyShop_ThrowLaser(int client, int damage)
+Action Timer_CrazyShop_HurtingMachine(Handle timer, DataPack pack)
 {
-	float vecEyeAngles[3];
-	float startPos[3];
+	pack.Reset();
 	
-	GetClientEyeAngles(client, vecEyeAngles);
+	int client = GetClientOfUserId(pack.ReadCell());
+	int prop = EntRefToEntIndex(pack.ReadCell());
 	
-	float height = float(GetRandomInt(0, 1) ? LASER_HEIGHT : LASER_HEIGHT * 2);
+	delete pack;
 	
-	float vecAbsOrigin[3];
-	GetClientAbsOrigin(client, vecAbsOrigin);
-	startPos[0] = vecAbsOrigin[0];
-	startPos[1] = vecAbsOrigin[1];
-	startPos[2] = vecAbsOrigin[2] + height;
+	if (prop == INVALID_ENT_REFERENCE)
+		return Plugin_Stop;
 	
-	int moveLinear = CreateEntityByName("func_movelinear");
-	if (moveLinear == -1)
-		return;
+	RemoveEntity(prop);
 	
-	int currentTime = RoundToNearest(GetGameTime());
-	int userid = GetClientUserId(client);
-	
-	char targetName[64];
-	FormatEx(targetName, sizeof(targetName), "FM_LASER_%d_%d", userid, currentTime);
-	
-	DispatchKeyValue(moveLinear, "targetname", targetName);
-	DispatchKeyValueInt(moveLinear, "spawnflags", 8);
-	DispatchKeyValueVector(moveLinear, "movedir", vecEyeAngles);
-	DispatchKeyValueInt(moveLinear, "speed", LASER_SPEED);
-	DispatchKeyValue(moveLinear, "startsound", PRECACHE_MOVE_SND);
-	DispatchKeyValueFloat(moveLinear, "startposition", 0.0);
-	DispatchKeyValueFloat(moveLinear, "movedistance", 1000.0);
-	DispatchKeyValueInt(moveLinear, "speed", 100);
-	
-	char propName[64];
-	FormatEx(propName, sizeof(propName), "%d_FM_PROP_LASER_%d_%d", damage, userid, currentTime);
-	
-	char output[sizeof(propName) + 32];
-	FormatEx(output, sizeof(output), "OnFullyOpen %s,Kill,,0,-1", propName);
-	
-	SetVariantString(output);
-	AcceptEntityInput(moveLinear, "AddOutput");
-
-	output = "OnFullyOpen !self,Kill,,0,-1";
-	SetVariantString(output);
-	AcceptEntityInput(moveLinear, "AddOutput");
-	
-	TeleportEntity(moveLinear, startPos, vecEyeAngles, NULL_VECTOR);
-	
-	int prop = CrazyShop_CreateProp(propName, targetName);
-	if (prop == -1)
-	{
-		RemoveEntity(moveLinear);
-		return;
-	}
-	
-	DispatchSpawn(moveLinear);
-	DispatchSpawn(prop);
-	
-	TeleportEntity(prop, startPos, vecEyeAngles);
-	
-	SetVariantString("!activator");
-	AcceptEntityInput(prop, "SetParent", moveLinear);
-	
-	AcceptEntityInput(moveLinear, "Open");
+	if (!client)
+		return Plugin_Stop;
+		
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+	return Plugin_Stop;
 }
 
-stock int CrazyShop_CreateProp(const char[] name, const char[] moveLinear)
+void CrazyShop_ThrowProp(int client, int prop)
 {
-	int ent = CreateEntityByName("prop_dynamic_override"); 
+	float vecEyeAngles[3];
+	float vecEyePos[3];
+	
+	GetClientEyeAngles(client, vecEyeAngles);
+	GetClientEyePosition(client, vecEyePos);
+	
+	float vecForward[3];
+	GetAngleVectors(vecEyeAngles, vecForward, NULL_VECTOR, NULL_VECTOR);
+	
+	ScaleVector(vecForward, 100.0);
+	
+	float spawnOrigin[3];
+	AddVectors(vecEyePos, vecForward, spawnOrigin);
+
+	TeleportEntity(prop, spawnOrigin, vecEyeAngles, vecEyeAngles);
+	
+	DispatchSpawn(prop);
+}
+
+stock int CrazyShop_CreateProp(const char[] name)
+{
+	int ent = CreateEntityByName("prop_physics_override"); 
 	if (ent == -1)
 		return -1;
 	
@@ -2292,18 +2298,26 @@ stock int CrazyShop_CreateProp(const char[] name, const char[] moveLinear)
 	DispatchKeyValue(ent, "model", PROP_MODEL);
 	DispatchKeyValue(ent, "disableshadows", "1");
 	DispatchKeyValue(ent, "disablereceiveshadows", "1");
-	DispatchKeyValue(ent, "parentname", moveLinear);
 	
-	SetEntProp(ent, Prop_Send, "m_usSolidFlags", 8);
-	SetEntProp(ent, Prop_Data, "m_nSolidType", 2);
-	SetEntProp(ent, Prop_Send, "m_CollisionGroup", 2);
-	SDKHook(ent, SDKHook_StartTouch, Hook_PropHit);
+	SDKHook(ent, SDKHook_SpawnPost, Prop_Spawn);
 	
 	return ent;
 }
 
-Action Hook_PropHit(int entity, int other)
+void Prop_Spawn(int entity)
 {
+	SDKHook(entity, SDKHook_StartTouch, Hook_PropHit);
+	SDKHook(entity, SDKHook_OnTakeDamage, Hook_PropDamage);
+}
+
+Action Hook_PropDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+{
+	damage = 0.0;
+	return Plugin_Changed;
+}
+
+Action Hook_PropHit(int entity, int other)
+{	
 	if (!(1<=other<=MaxClients))
 		return Plugin_Continue;
 	
@@ -2313,21 +2327,13 @@ Action Hook_PropHit(int entity, int other)
 	if (PLAYER_TEMP_VAR(other, protectLaser))
 		return Plugin_Continue;
 	
-	char damageStr[5];
+	char name[64];
+	GetEntPropString(entity, Prop_Data, "m_iName", name, sizeof(name));
 	
-	char name[32];
-	GetEntPropString(entity, Prop_Data, "m_nName", name, sizeof(name));
+	char vals[5][10];
+	ExplodeString(name, "_", vals, sizeof(vals), sizeof(vals[]));
 	
-	for (int i = 0; i < strlen(name); i++)
-	{
-		if (name[i] == '_')
-		{
-			strcopy(damageStr, sizeof(damageStr), name[i]);
-			break;
-		}
-	}
-	
-	int damage = StringToInt(damageStr);
+	int damage = StringToInt(vals[0]);
 	if (damage == 0)
 		return Plugin_Continue;
 	
@@ -2338,46 +2344,9 @@ Action Hook_PropHit(int entity, int other)
 		return Plugin_Continue;
 	}
 	
-	bool shouldDamage = view_as<bool>(GetRandomInt(0, 1));
-	if (shouldDamage)
-		SDKHooks_TakeDamage(other, 0, 0, view_as<float>(damage));
-	else
-	{
-		float originalSpeed = GetEntPropFloat(other, Prop_Data, "m_flLaggedMovementValue");
-		
-		SetEntPropFloat(other, Prop_Data, "m_flLaggedMovementValue", 0.2);
-		
-		DataPack pack = new DataPack();
-		pack.WriteCell(GetClientUserId(other));
-		pack.WriteFloat(originalSpeed);
-		
-		CreateTimer(float(damage / 2), Timer_LaserHit, pack, TIMER_FLAG_NO_MAPCHANGE);
-		CPrintToChat(other, "%s A laser has hit you, you are being slowed down now!", THIS_MODE_INFO.tag);
-	}
+	SDKHooks_TakeDamage(other, 0, 0, float(damage));
 	
 	return Plugin_Continue;
-}
-
-Action Timer_LaserHit(Handle timer, DataPack pack)
-{
-	if (g_bRoundEnd)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
-	int client = GetClientOfUserId(pack.ReadCell());
-	if (!client || !IsPlayerAlive(client) || !ZR_IsClientHuman(client))
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
-	float originalSpeed = pack.ReadFloat();
-	delete pack;
-	
-	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", originalSpeed);
-	return Plugin_Stop;
 }
 
 /****************************************************************/

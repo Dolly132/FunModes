@@ -143,7 +143,7 @@ stock void OnPluginStart_GunGame()
 	
 	THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_TOGGLE].cvar.AddChangeHook(OnGunGameModeToggle);
 	
-	GameData gd = new GameData("FunModes.games.txt");
+	GameData gd = new GameData("funmodes.games.txt");
 	
 	int offset = gd.GetOffset("Weapon_Switch");
 	if (offset == -1)

@@ -60,6 +60,17 @@ public void OnPluginStart()
 	}
 }
 
+public void OnPluginEnd()
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || IsFakeClient(i))
+			continue;
+		
+		OnClientDisconnect(i);
+	}
+}
+
 public void OnMapStart()
 {
 	g_LaserSprite = PrecacheModel("sprites/laser.vmt");
@@ -181,6 +192,11 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if (strcmp(name, "DynamicChannels", false) == 0)
 		g_bPlugin_DynamicChannels = false;
+}
+
+public void OnPlayerRunCmdPost(int client, int buttons, int impulse)
+{
+	DECLARE_ONPLAYERRUNCMD_POST(OnPlayerRunCmdPost, client, buttons, impulse);
 }
 
 float GetDistanceBetween(int origin, int target, bool squarred = false)
@@ -316,9 +332,10 @@ int Menu_DisplayConVars(Menu menu, MenuAction action, int param1, int param2)
 			char functionName[46];
 			FormatEx(functionName, sizeof(functionName), "Cmd_%s%s", modeName, (param2 == 0) ? "Toggle" : "Settings");
 
-			CPrintToChatAll("Function name: %s", functionName);
 			Function myFunction = GetFunctionByName(null, functionName);
-
+			if (myFunction == INVALID_FUNCTION)
+				return -1;
+				
 			Call_StartFunction(null, myFunction);
 
 			Call_PushCell(param1);

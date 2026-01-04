@@ -57,7 +57,12 @@ void OnPullGameModeToggle(ConVar cvar, const char[] newValue, const char[] oldVa
 		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 }
 
-stock void OnMapStart_PullGame() {}
+stock void OnMapStart_PullGame()
+{
+	if (g_iLaserBeam == -1)
+		return;
+	
+}
 stock void OnMapEnd_PullGame()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);

@@ -134,13 +134,16 @@ public Action Cmd_DoubleJumpToggle(int client, int args)
 }
 
 /* SM DOUBLEJUMP 1.1.0, ALL CREDITS GO TO - https://forums.alliedmods.net/showpost.php?p=2759524&postcount=37 */
-public Action OnPlayerRunCmd(int client, int& buttons)
+void OnPlayerRunCmdPost_DoubleJump(int client, int buttons, int impulse)
 {
+	#pragma unused buttons
+	#pragma unused impulse
+	
 	if(!THIS_MODE_INFO.isOn || !IsClientInGame(client) || !IsPlayerAlive(client))
-		return Plugin_Continue;
+		return;
 
 	if((!THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_HUMANS].cvar.BoolValue && GetClientTeam(client) == CS_TEAM_CT) || (!THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_ZOMBIES].cvar.BoolValue && GetClientTeam(client) == CS_TEAM_T))
-		return Plugin_Continue;
+		return;
 
 	static bool inGround;
 	static bool inJump;
@@ -169,7 +172,7 @@ public Action OnPlayerRunCmd(int client, int& buttons)
 	landed[client]	= inGround;
 	wasJump[client]	= inJump;
 
-	return Plugin_Continue;
+	return;
 }
 
 stock void ApplyNewJump(int client)

@@ -128,7 +128,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC(%1, ChaosWeapons); \
 		CALL_MODE_FUNC(%1, GunGame); \
 		CALL_MODE_FUNC(%1, MathGame); \
-		CALL_MODE_FUNC(%1, CrazyShop)
+		CALL_MODE_FUNC(%1, CrazyShop); \
+		CALL_MODE_FUNC(%1, RealityShift)
 
 #define CALL_MODE_FUNC_PARAM(%1,%2,%3) %1_%2(%3)
 #define DECLARE_FM_FORWARD_PARAM(%1,%2) \
@@ -142,7 +143,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
 		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2); \
 		CALL_MODE_FUNC_PARAM(%1, GunGame, %2); \
-		CALL_MODE_FUNC_PARAM(%1, CrazyShop, %2)
+		CALL_MODE_FUNC_PARAM(%1, CrazyShop, %2); \
+		CALL_MODE_FUNC_PARAM(%1, RealityShift, %2)
 
 /*
 these commented macros are not used for now
@@ -169,6 +171,11 @@ these commented macros are not used for now
 #define DECLARE_FM_FORWARD_PARAM4(%1,%2,%3,%4,%5) \
 		CALL_MODE_FUNC_PARAM4(%1, VIPMode, %2, %3, %4, %5); \
 		CALL_MODE_FUNC_PARAM4(%1, CrazyShop, %2, %3, %4, %5)
+
+/* OnPlayerRunCmdPost Calls (Since this is called every frame, we gotta watch out for performance :p) */
+#define DECLARE_ONPLAYERRUNCMD_POST(%1,%2,%3,%4) \
+		CALL_MODE_FUNC_PARAM3(%1, DoubleJump, %2, %3, %4); \
+		CALL_MODE_FUNC_PARAM3(%1, CrazyShop, %2, %3, %4)
 		
 /* %0: ConVarInfo[], %1: index, %2: name, %3: default value, %4: description 
 	%5: cvar values, %6: cvar value type
@@ -200,3 +207,4 @@ these commented macros are not used for now
 #include "Fun_Modes/GunGame.sp"
 #include "Fun_Modes/MathGame.sp"
 #include "Fun_Modes/CrazyShop.sp"
+#include "Fun_Modes/RealityShift.sp"
