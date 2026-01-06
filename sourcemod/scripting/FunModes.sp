@@ -95,7 +95,8 @@ public void OnMapStart()
 {
 	g_LaserSprite = PrecacheModel("sprites/laser.vmt");
 	g_HaloSprite = PrecacheModel("materials/sprites/halo.vtf");
-
+	g_iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt");
+	
 	PrecacheSound(Beacon_Sound, true);
 
 	DECLARE_FM_FORWARD(OnMapStart);

@@ -71,6 +71,9 @@ void OnRealityShiftModeToggle(ConVar cvar, const char[] oldValue, const char[] n
 
 void OnRealityShiftConVarChange(ConVar cvar, const char[] oldValue, const char[] newValue)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
 	if (cvar == THIS_MODE_INFO.cvarInfo[REALITYSHIFT_CONVAR_TIMER_INTERVAL].cvar)
 	{
 		RealityShift_StartTimer(cvar.FloatValue);
@@ -331,12 +334,14 @@ void RealityShift_SwapPositions(int client, int assignedTo)
 	if (g_bRealityShiftSwapped[client] || g_bRealityShiftSwapped[assignedTo])
 		return;
 		
-	float clientOrigin[3], assignedToOrigin[3];
+	float clientOrigin[3], assignedToOrigin[3], clientEyeAngles[3], assignedToEyeAngles[3];
 	GetClientAbsOrigin(client, clientOrigin);
 	GetClientAbsOrigin(assignedTo, assignedToOrigin);
+	GetClientEyeAngles(client, clientEyeAngles);
+	GetClientEyeAngles(assignedTo, assignedToEyeAngles);
 	
-	TeleportEntity(client, assignedToOrigin);
-	TeleportEntity(assignedTo, clientOrigin);
+	TeleportEntity(client, assignedToOrigin, assignedToEyeAngles);
+	TeleportEntity(assignedTo, clientOrigin, clientEyeAngles);
 	
 	CPrintToChat(client, "%s You have swapped positions with {olive}%N", THIS_MODE_INFO.tag, assignedTo);
 	CPrintToChat(assignedTo, "%s You have swapped position with {olive}%N", THIS_MODE_INFO.tag, client);

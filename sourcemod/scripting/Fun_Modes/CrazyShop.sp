@@ -303,9 +303,6 @@ void OnCrazyShopModeToggle(ConVar cvar, const char[] newValue, const char[] oldV
 
 stock void OnMapStart_CrazyShop()
 {
-	if (g_iLaserBeam == -1)
-		g_iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt");
-	
 	PrecacheModel(PROP_MODEL);
 }
 
@@ -2174,7 +2171,7 @@ Action CrazyShop_Timer_Grabbing(Handle timer, int client)
 		return Plugin_Stop;
 	
 	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
-	if (target == -1 || !IsPlayerAlive(target))
+	if (target == -1 || !IsPlayerAlive(target) || !IsPlayerAlive(client) || !ZR_IsClientHuman(client))
 		return Plugin_Stop;
 	
 	float clientEyePos[3], targetEyePos[3];
