@@ -127,8 +127,8 @@ stock void OnPluginStart_HealBeacon()
 
 	THIS_MODE_INFO.enableIndex = HB_CONVAR_TOGGLE;
 
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 
 	THIS_MODE_INFO.cvarInfo[HB_CONVAR_TOGGLE].cvar.AddChangeHook(OnHBModeToggle);
 }

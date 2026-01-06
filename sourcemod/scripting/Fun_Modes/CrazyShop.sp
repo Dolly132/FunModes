@@ -289,8 +289,8 @@ stock void OnPluginStart_CrazyShop()
 	
 	THIS_MODE_INFO.enableIndex = CRAZYSHOP_CONVAR_TOGGLE;
 	
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 	
 	THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_TOGGLE].cvar.AddChangeHook(OnCrazyShopModeToggle);
 }

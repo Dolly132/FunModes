@@ -35,8 +35,8 @@ stock void OnPluginStart_Sample()
 	
 	THIS_MODE_INFO.enableIndex = SAMPLE_CONVAR_TOGGLE;
 	
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 	
 	THIS_MODE_INFO.cvarInfo[SAMPLE_CONVAR_TOGGLE].cvar.AddChangeHook(OnSampleModeToggle);
 }

@@ -35,8 +35,8 @@ stock void OnPluginStart_SkinsMode()
 	
 	THIS_MODE_INFO.enableIndex = SKINSMODE_CONVAR_TOGGLE;
 	
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 	
 	THIS_MODE_INFO.cvarInfo[SKINSMODE_CONVAR_TOGGLE].cvar.AddChangeHook(OnSkinsModeModeToggle);
 }

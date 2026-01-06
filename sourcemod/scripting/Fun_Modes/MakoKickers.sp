@@ -90,8 +90,8 @@ stock void OnPluginStart_MakoKickers()
 	
 	THIS_MODE_INFO.enableIndex = MAKOKICKERS_CONVAR_TOGGLE;
 	
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 	
 	THIS_MODE_INFO.cvarInfo[MAKOKICKERS_CONVAR_TOGGLE].cvar.AddChangeHook(OnMakoKickersModeToggle);
 }

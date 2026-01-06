@@ -78,7 +78,8 @@ enum struct ModeInfo
 	int enableIndex;
 }
 
-ArrayList g_arModesInfo;
+ModeInfo g_ModesInfo[MAX_MODES_NUM];
+int g_iLastModeIndex;
 
 enum struct FM_Color
 {
@@ -191,7 +192,7 @@ these commented macros are not used for now
 /* %1: mode struct, %2: variable, %3: value, %4: index */
 #define CHANGE_MODE_INFO(%1,%2,%3,%4) \ 
 		%1.%2 = %3; \
-		g_arModesInfo.SetArray(%4, %1, sizeof(%1))
+		g_ModesInfo[%4] = %1
 
 #define THIS_MODE_INFO
 

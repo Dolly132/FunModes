@@ -41,8 +41,6 @@ public void OnPluginStart()
 
 	g_cvHUDChannel = CreateConVar("sm_funmodes_hud_channel", "4", "The channel for the hud if using DynamicChannels", _, true, 0.0, true, 5.0);
 
-	g_arModesInfo = new ArrayList(ByteCountToCells(300));
-	
 	DECLARE_FM_FORWARD(OnPluginStart);
 
 	AutoExecConfig();
@@ -279,10 +277,10 @@ Action Cmd_FunModes(int client, int args)
 	Menu menu = new Menu(Menu_MainModes);
 	menu.SetTitle("[FunModes] Available modes!");
 
-	for (int i = 0; i < g_arModesInfo.Length; i++)
+	for (int i = 0; i < g_iLastModeIndex; i++)
 	{
 		ModeInfo info;
-		g_arModesInfo.GetArray(i, info, sizeof(info));
+		info = g_ModesInfo[i];
 
 		char index[3];
 		IntToString(i, index, sizeof(index));
@@ -321,7 +319,7 @@ void DisplayModeInfo(int client, int modeIndex)
 	Menu menu = new Menu(Menu_DisplayConVars);
 
 	ModeInfo info;
-	g_arModesInfo.GetArray(modeIndex, info, sizeof(info));
+	info = g_ModesInfo[modeIndex];
 	
 	bool enabled = info.cvarInfo[info.enableIndex].cvar.BoolValue;
 	
@@ -416,10 +414,7 @@ int Menu_CvarsInfo(Menu menu, MenuAction action, int param1, int param2)
 			char indexStr[3];
 			menu.GetItem(param2, indexStr, sizeof(indexStr));
 
-			ModeInfo info;
-			g_arModesInfo.GetArray(g_iPreviousModeIndex[param1], info, sizeof(info));
-
-			ShowCvarInfo(param1, info.cvarInfo[StringToInt(indexStr)]);
+			ShowCvarInfo(param1, g_ModesInfo[g_iPreviousModeIndex[param1]].cvarInfo[StringToInt(indexStr)]);
 		}
 	}
 	
@@ -489,12 +484,7 @@ int Menu_ShowCvarInfo(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Cancel:
 		{
 			if (param2 == MenuCancel_ExitBack)
-			{
-				ModeInfo info;
-				g_arModesInfo.GetArray(g_iPreviousModeIndex[param1], info, sizeof(info));
-
-				ShowCvarsInfo(param1, info);
-			}
+				ShowCvarsInfo(param1, g_ModesInfo[g_iPreviousModeIndex[param1]]);
 		}
 		
 		case MenuAction_Select:

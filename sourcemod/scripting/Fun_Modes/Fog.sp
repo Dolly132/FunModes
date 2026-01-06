@@ -58,8 +58,8 @@ stock void OnPluginStart_Fog()
 
 	THIS_MODE_INFO.enableIndex = FOG_CONVAR_TOGGLE;
 	
-	THIS_MODE_INFO.index = g_arModesInfo.Length;
-	g_arModesInfo.PushArray(THIS_MODE_INFO);
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 
 	THIS_MODE_INFO.cvarInfo[FOG_CONVAR_TOGGLE].cvar.AddChangeHook(OnFogModeToggle);	
 }
