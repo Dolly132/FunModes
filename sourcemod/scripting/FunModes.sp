@@ -58,6 +58,28 @@ public void OnPluginStart()
 	{
 		RegAdminCmd(commands[i], Cmd_FunModes, ADMFLAG_CONVARS, "Show all available funmodes");
 	}
+	
+	GameData gd = new GameData("funmodes.games.txt");
+	
+	int offset = gd.GetOffset("Weapon_Switch");
+	if (offset == -1)
+	{
+		LogError("[FunModes] Could not find the offset of \"Weapon_Switch\", some features may be neglected");
+		return;
+	}
+	
+	StartPrepSDKCall(SDKCall_Player);
+	PrepSDKCall_SetVirtual(270);
+	
+	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
+	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
+	
+	g_hSwitchSDKCall = EndPrepSDKCall();
+	
+	if (g_hSwitchSDKCall == null)
+		LogError("[FunModes] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle", THIS_MODE_INFO.name);
+
+	delete gd;
 }
 
 public void OnPluginEnd()
@@ -107,11 +129,10 @@ public void OnClientDisconnect(int client)
 }
 
 public void ZR_OnClientInfected(int client, int attacker, bool motherInfect)
-{
+{		
+	DECLARE_FM_FORWARD_PARAM(ZR_OnClientInfected, client);
 	if (motherInfect && !g_bMotherZombie)
 		g_bMotherZombie = true;
-		
-	DECLARE_FM_FORWARD_PARAM(ZR_OnClientInfected, client);
 }
 
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -301,10 +322,12 @@ void DisplayModeInfo(int client, int modeIndex)
 
 	ModeInfo info;
 	g_arModesInfo.GetArray(modeIndex, info, sizeof(info));
+	
+	bool enabled = info.cvarInfo[info.enableIndex].cvar.BoolValue;
+	
+	menu.SetTitle("%s - Mode Info\nStatus: %s - %s\n", info.name, enabled?"Enabled":"Disabled", info.isOn?"On":"Off");
 
-	menu.SetTitle("%s - Mode Info\nStatus: %s - %s\n", info.name, info.enabled?"Enabled":"Disabled", info.isOn?"On":"Off");
-
-	menu.AddItem(info.name, "Toggle", (info.enabled)?ITEMDRAW_DEFAULT:ITEMDRAW_DISABLED);
+	menu.AddItem(info.name, "Toggle", enabled?ITEMDRAW_DEFAULT:ITEMDRAW_DISABLED);
 	menu.AddItem(info.name, "Settings");
 
 	menu.ExitBackButton = true;

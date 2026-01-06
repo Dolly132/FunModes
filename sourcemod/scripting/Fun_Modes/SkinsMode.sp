@@ -33,7 +33,7 @@ stock void OnPluginStart_SkinsMode()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = SKINSMODE_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -43,9 +43,8 @@ stock void OnPluginStart_SkinsMode()
 
 void OnSkinsModeModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_SkinsMode() {}
@@ -88,7 +87,7 @@ stock void Event_PlayerDeath_SkinsMode(int client)
 
 public Action Cmd_SkinsModeToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s SkinsMode Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;

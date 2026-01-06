@@ -21,6 +21,7 @@ ModeInfo g_RealityShiftInfo;
 Handle g_hRealityShiftTimer;
 
 int g_iRealityShiftAssigned[MAXPLAYERS + 1];
+bool g_bRealityShiftSwapped[MAXPLAYERS + 1];
 
 stock void OnPluginStart_RealityShift()
 {
@@ -51,7 +52,7 @@ stock void OnPluginStart_RealityShift()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = REALITYSHIFT_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -64,9 +65,8 @@ stock void OnPluginStart_RealityShift()
 
 void OnRealityShiftModeToggle(ConVar cvar, const char[] oldValue, const char[] newValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 void OnRealityShiftConVarChange(ConVar cvar, const char[] oldValue, const char[] newValue)
@@ -85,23 +85,29 @@ stock void OnMapStart_RealityShift() {}
 stock void OnMapEnd_RealityShift()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+	
+	g_hRealityShiftTimer = null;
 }
 
 stock void OnClientPutInServer_RealityShift(int client)
 {
 	g_iRealityShiftAssigned[client] = 0;
+	g_bRealityShiftSwapped[client] = false;
 }
 
 stock void OnClientDisconnect_RealityShift(int client)
 {
 	g_iRealityShiftAssigned[client] = 0;
+	g_bRealityShiftSwapped[client] = false;
 }
 
 stock void ZR_OnClientInfected_RealityShift(int client)
 {
 	#pragma unused client
-
-	if (!g_bMotherZombie && g_hRealityShiftTimer != null)
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
+	if (!g_bMotherZombie && g_hRealityShiftTimer == null)
 	{
 		RealityShift_StartTimer(THIS_MODE_INFO.cvarInfo[REALITYSHIFT_CONVAR_TIMER_INTERVAL].cvar.FloatValue);
 		if (THIS_MODE_INFO.cvarInfo[REALITYSHIFT_CONVAR_MODE].cvar.IntValue == 1)
@@ -128,7 +134,7 @@ stock void Event_PlayerDeath_RealityShift(int client)
 
 public Action Cmd_RealityShiftToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s RealityShift Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -149,8 +155,6 @@ public Action Cmd_RealityShiftToggle(int client, int args)
 		int mode = THIS_MODE_INFO.cvarInfo[REALITYSHIFT_CONVAR_MODE].cvar.IntValue;
 		if (mode == 0)
 			CPrintToChatAll("%s The positions will be swapped randomly.", THIS_MODE_INFO.tag);
-		
-		RealityShift_AssignPlayers(mode == 1);
 		
 		int interval = THIS_MODE_INFO.cvarInfo[REALITYSHIFT_CONVAR_TIMER_INTERVAL].cvar.IntValue;
 		CPrintToChatAll("%s Positions will be swapped every {olive}%d seconds!", THIS_MODE_INFO.tag, interval);
@@ -228,7 +232,6 @@ Action RealityShift_Timer(Handle timer)
 
 int GetRandomClientFromArray(int[] arr, int len, int &client)
 {
-	int result[2];
 	int count;
 	int[] newArr = new int[len];
 	
@@ -237,15 +240,18 @@ int GetRandomClientFromArray(int[] arr, int len, int &client)
 		if (arr[i] == 0)
 			continue;
 		
+		if (g_bRealityShiftSwapped[arr[i]])
+			continue;
+			
 		newArr[count++] = arr[i];
-		result[0] = i;
 	}
 	
 	if (!count)
 		return -1;
 	
-	client = newArr[GetRandomInt(0, count - 1)];
-	return result[0];
+	int index = GetRandomInt(0, count - 1);
+	client = newArr[index];
+	return index;
 }
 
 void RealityShift_AssignPlayers(bool saveOnly = false, bool random = true)
@@ -257,22 +263,26 @@ void RealityShift_AssignPlayers(bool saveOnly = false, bool random = true)
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || !ZR_IsClientHuman(i))
 			continue;
 		
+		g_bRealityShiftSwapped[i] = false;
+		clients[count++] = i;
+		
 		if (!random)
 		{
-			int assignedTo = g_iRealityShiftAssigned[i];
-			if (!assignedTo || !IsPlayerAlive(assignedTo) || !ZR_IsClientHuman(assignedTo))
+			int assignedTo = GetClientOfUserId(g_iRealityShiftAssigned[i]);
+			if (!assignedTo || !IsClientInGame(assignedTo) || !IsPlayerAlive(assignedTo) || !ZR_IsClientHuman(assignedTo))
 			{
+				g_bRealityShiftSwapped[i] = false;
 				g_iRealityShiftAssigned[i] = 0;
 				continue;
 			}
 			
-			RealityShift_SwapPositions(i, g_iRealityShiftAssigned[i]);
+			RealityShift_SwapPositions(i, assignedTo);
 		}
 	}
 	
-	if (!random)
+	if (!saveOnly && !random)
 		return;
-		
+	
 	int assignmentsCount = count / 2;
 	if (assignmentsCount <= 1)
 		return;
@@ -290,25 +300,37 @@ void RealityShift_AssignPlayers(bool saveOnly = false, bool random = true)
 		index = GetRandomClientFromArray(clients, count, assignedTo);
 		if (index == -1)
 			continue;
-			
+				
 		clients[index] = 0;
-		
+
 		if (saveOnly)
 		{
 			g_iRealityShiftAssigned[client] = GetClientUserId(assignedTo);
 			g_iRealityShiftAssigned[assignedTo] = GetClientUserId(client);
 			CPrintToChat(client, "%s You will be swapping positions with {olive}%N {lightgreen}the whole round!", THIS_MODE_INFO.tag, assignedTo);
 			CPrintToChat(assignedTo, "%s You will be swapping positions with {olive}%N {lightgreen}the whole round!", THIS_MODE_INFO.tag, client);
-			continue;
 		}
-		
-		if (g_iRealityShiftAssigned[client] == 0 || g_iRealityShiftAssigned[assignedTo] == 0)
+		else
+		{
+			if (!random)
+				continue;
+				
+			if (g_bRealityShiftSwapped[client] || g_bRealityShiftSwapped[assignedTo])
+				continue;
+				
 			RealityShift_SwapPositions(client, assignedTo);
+		}
 	}
 }
 
 void RealityShift_SwapPositions(int client, int assignedTo)
 {
+	if (client == assignedTo)
+		return;
+		
+	if (g_bRealityShiftSwapped[client] || g_bRealityShiftSwapped[assignedTo])
+		return;
+		
 	float clientOrigin[3], assignedToOrigin[3];
 	GetClientAbsOrigin(client, clientOrigin);
 	GetClientAbsOrigin(assignedTo, assignedToOrigin);
@@ -318,4 +340,7 @@ void RealityShift_SwapPositions(int client, int assignedTo)
 	
 	CPrintToChat(client, "%s You have swapped positions with {olive}%N", THIS_MODE_INFO.tag, assignedTo);
 	CPrintToChat(assignedTo, "%s You have swapped position with {olive}%N", THIS_MODE_INFO.tag, client);
+	
+	g_bRealityShiftSwapped[client] = true;
+	g_bRealityShiftSwapped[assignedTo] = true;
 }

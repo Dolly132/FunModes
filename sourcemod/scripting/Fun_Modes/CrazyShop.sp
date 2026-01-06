@@ -287,7 +287,7 @@ stock void OnPluginStart_CrazyShop()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = CRAZYSHOP_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -297,9 +297,8 @@ stock void OnPluginStart_CrazyShop()
 
 void OnCrazyShopModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_CrazyShop()
@@ -308,22 +307,6 @@ stock void OnMapStart_CrazyShop()
 		g_iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt");
 	
 	PrecacheModel(PROP_MODEL);
-	PrecacheSound(PRECACHE_MOVE_SND);
-	
-	AddFileToDownloadsTable(MOVE_SND);
-	AddFileToDownloadsTable(PROP_MODEL);
-	
-	AddFileToDownloadsTable("models/nide/laser/laser.phy");
-	AddFileToDownloadsTable("models/nide/laser/laser.vvd");
-	AddFileToDownloadsTable("models/nide/laser/laser.sw.vtx");
-	AddFileToDownloadsTable("models/nide/laser/laser.dx80.vtx");
-	AddFileToDownloadsTable("models/nide/laser/laser.dx90.vtx");
-	
-	AddFileToDownloadsTable("materials/models/nide/laser/laser1.vmt");
-	AddFileToDownloadsTable("materials/models/nide/laser/laser1.vtf");
-	AddFileToDownloadsTable("materials/models/nide/laser/laser2.vmt");
-	AddFileToDownloadsTable("materials/models/nide/laser/laser2.vtf");
-	AddFileToDownloadsTable("materials/models/nide/laser/white.vtf");
 }
 
 stock void OnMapEnd_CrazyShop()
@@ -466,10 +449,16 @@ stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Acti
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
+	bool isVictimAlive = IsPlayerAlive(victim);
+	bool isAttackerAlive = (1 <= attacker <= MaxClients) && IsPlayerAlive(attacker);
+	
+	bool isVictimZombie = ZR_IsClientZombie(victim);
+	bool isAttackerZombie = (1 <= attacker <= MaxClients) && ZR_IsClientZombie(attacker);
+	
 	// victim is for sure gonna be a real player, so no need to check
 	
 	// check if victim is a human and has laser protect
-	if (PLAYER_TEMP_VAR(victim, laserProtect) && ZR_IsClientHuman(victim))
+	if (PLAYER_TEMP_VAR(victim, laserProtect) && !isVictimAlive && !isVictimZombie)
 	{
 		if (!IsValidEntity(attacker))
 			return;
@@ -504,9 +493,9 @@ stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Acti
 	}
 	
 	// check if victim is a zombie and attacker is human for ignite immunity and kb protection
-	if ((PLAYER_TEMP_VAR(victim, igniteImmunity) || PLAYER_TEMP_VAR(victim, kbProtect)) && ZR_IsClientZombie(victim))
+	if ((PLAYER_TEMP_VAR(victim, igniteImmunity) || PLAYER_TEMP_VAR(victim, kbProtect)) && isVictimAlive && isVictimZombie)
 	{
-		if (!(1<=attacker<=MaxClients) || !ZR_IsClientHuman(attacker))
+		if (isAttackerZombie)
 			return;
 		
 		if (PLAYER_TEMP_VAR(victim, kbProtect))
@@ -519,9 +508,9 @@ stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Acti
 		RequestFrame(CrazyShop_CheckIgnite, GetClientUserId(victim));
 	}
 	
-	if ((1<=attacker<=MaxClients) && PLAYER_TEMP_VAR(attacker, superWeapon))
+	if (isAttackerAlive && !isAttackerZombie && PLAYER_TEMP_VAR(attacker, superWeapon))
 	{
-		if (!ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
+		if (!isVictimAlive || !isVictimZombie)
 			return;
 
 		char weaponName[32];
@@ -831,7 +820,7 @@ void DB_CrazyShop_OnCheckItems(Database db, DBResultSet results, const char[] er
 
 public Action Cmd_CrazyShopToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s CrazyShop Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -1617,6 +1606,9 @@ void CrazyShop_Activate(int client, int itemNum)
 			{
 				int weapon = GivePlayerItem(client, PLAYER_TEMP_VAR(client, superWeaponName));
 				EquipPlayerWeapon(client, weapon);
+				
+				if (g_hSwitchSDKCall != null)
+					SDKCall(g_hSwitchSDKCall, client, weapon, 0);
 			}
 			
 			FunModes_HookEvent(g_bEvent_WeaponFire, "weapon_fire", Event_WeaponFire_CrazyShop);
@@ -1826,12 +1818,6 @@ void CrazyShop_Activate(int client, int itemNum)
 
 Action Timer_CrazyShop_InfectionProtection(Handle timer, DataPack pack)
 {
-	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
 	pack.Reset();
 	
 	int client = GetClientOfUserId(pack.ReadCell());
@@ -1852,12 +1838,6 @@ Action Timer_CrazyShop_InfectionProtection(Handle timer, DataPack pack)
 
 Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 {
-	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
 	pack.Reset();
 	
 	int client = GetClientOfUserId(pack.ReadCell());
@@ -1869,6 +1849,14 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 	
 	int itemNum = pack.ReadCell();
 	delete pack;
+	
+	PLAYER_TEMP_VAR(client, superWeaponName)[0] = '\0';
+	PLAYER_TEMP_VAR(client, superWeapon) = false;
+	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+	
+	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
+		return Plugin_Stop;
 	
 	if (PLAYER_TEMP_VAR(client, originalWeapon)[0])
 	{
@@ -1883,22 +1871,12 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 		EquipPlayerWeapon(client, wp);
 		PLAYER_TEMP_VAR(client, originalWeapon)[0] = '\0';
 	}
-	
-	PLAYER_TEMP_VAR(client, superWeaponName)[0] = '\0';
-	PLAYER_TEMP_VAR(client, superWeapon) = false;
-	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
-	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+
 	return Plugin_Stop;
 }
 
 Action Timer_CrazyShop_LaserProtection(Handle timer, DataPack pack)
 {
-	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
 	pack.Reset();
 	
 	int client = GetClientOfUserId(pack.ReadCell());
@@ -1910,9 +1888,9 @@ Action Timer_CrazyShop_LaserProtection(Handle timer, DataPack pack)
 	
 	int itemNum = pack.ReadCell();
 	delete pack;
+	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	
 	PLAYER_TEMP_VAR(client, laserProtect) = false;
-	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
@@ -2036,13 +2014,7 @@ void CrazyShop_ResetSpeed()
 }
 
 Action Timer_CrazyShop_MoreSpeed(Handle timer, DataPack pack)
-{
-	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
-	
+{	
 	pack.Reset();
 	
 	int client = GetClientOfUserId(pack.ReadCell());
@@ -2055,11 +2027,15 @@ Action Timer_CrazyShop_MoreSpeed(Handle timer, DataPack pack)
 	int itemNum = pack.ReadCell();
 	float speed = pack.ReadFloat();
 	
-	delete pack;
-	
-	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", speed);
 	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+	
+	delete pack;
+	
+	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
+		return Plugin_Stop;
+	
+	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", speed);
 	return Plugin_Stop;
 }
 
@@ -2155,25 +2131,23 @@ Action Timer_CrazyShop_Pull(Handle timer, DataPack pack)
 		return Plugin_Stop;
 	}
 	
-	if (PLAYER_TEMP_VAR(client, grabbedTarget) == -1)
-	{
-		delete pack;
-		return Plugin_Stop;
-	}
+	int itemNum = pack.ReadCell();
+	delete pack;
 	
+	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
 	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
+	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
+	
+	if (target == -1)
+		return Plugin_Stop;
+	
+	PLAYER_TEMP_VAR(client, grabbedTarget) = -1;
 	
 	PLAYER_ITEM_ACTIVE(target, 1) = false;
 	PLAYER_TEMP_VAR(target, infectionProtect) = false;
 			
 	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(client, originalTargetMaxSpeed));
 	
-	int itemNum = pack.ReadCell();
-	delete pack;
-	
-	PLAYER_ITEM_ACTIVE(client, itemNum) = false;
-	PLAYER_TEMP_VAR(client, grabbedTarget) = -1;
-	SetEntProp(client, Prop_Send, "m_iProgressBarDuration", 0);
 	return Plugin_Stop;
 }
 
@@ -2200,36 +2174,23 @@ Action CrazyShop_Timer_Grabbing(Handle timer, int client)
 		return Plugin_Stop;
 	
 	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
-	if (target == -1)
+	if (target == -1 || !IsPlayerAlive(target))
 		return Plugin_Stop;
 	
-	float speed = 8.0;
-	float clientEyePos[3], clientEyeAngles[3], velocity[3], targetLoc[3];
-	
-	float distance = PLAYER_TEMP_VAR(client, grabbedDistance);
-	
+	float clientEyePos[3], targetEyePos[3];
 	GetClientEyePosition(client, clientEyePos);
-	GetClientEyeAngles(client, clientEyeAngles);
-	GetEntPropVector(target, Prop_Data, "m_vecOrigin", targetLoc);
+	GetClientEyePosition(target, targetEyePos);
 	
-	TR_TraceRayFilter(clientEyePos, clientEyeAngles, MASK_ALL, RayType_Infinite, TraceRayTryToHit); // Find where the player is aiming
-	TR_GetEndPosition(velocity); // Get the end position of the trace ray
-
-	distance += speed * 10.0;
-	
-	SubtractVectors(velocity, clientEyePos, velocity);
+	float velocity[3];
+	SubtractVectors(clientEyePos, targetEyePos, velocity);
 	NormalizeVector(velocity, velocity);
+	ScaleVector(velocity, 300.0);
 	
-	ScaleVector(velocity, distance);
-	AddVectors(velocity, clientEyePos, velocity);
-	SubtractVectors(velocity, targetLoc, velocity);
-	ScaleVector(velocity, speed * 3 / 5);
+	float distance = GetVectorDistance(clientEyePos, targetEyePos, true);
+	if (distance > (200.0*200.0))
+		TeleportEntity(target, _, _, velocity);
 	
-	TeleportEntity(target, NULL_VECTOR, NULL_VECTOR, velocity);
-	
-	targetLoc[2] += 45;
-	
-	TE_SetupBeamPoints(clientEyePos, targetLoc, g_iLaserBeam, 0, 0, 66, 0.2, 1.0, 10.0, 0, 0.0, {255,255,255,255}, 0);
+	TE_SetupBeamPoints(clientEyePos, targetEyePos, g_iLaserBeam, 0, 0, 66, 0.2, 1.0, 10.0, 0, 0.0, {255,255,255,255}, 0);
 	TE_SendToAll();
 	
 	return Plugin_Continue;
@@ -2310,10 +2271,9 @@ void Prop_Spawn(int entity)
 	SDKHook(entity, SDKHook_OnTakeDamage, Hook_PropDamage);
 }
 
-Action Hook_PropDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+public Action Hook_PropDamage(int entity, int& attacker, int& inflictor, float& damage, int& damagetype)
 {
-	damage = 0.0;
-	return Plugin_Changed;
+	return Plugin_Handled;
 }
 
 Action Hook_PropHit(int entity, int other)

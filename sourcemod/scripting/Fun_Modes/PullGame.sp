@@ -42,7 +42,7 @@ stock void OnPluginStart_PullGame()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = PULLGAME_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -52,9 +52,8 @@ stock void OnPluginStart_PullGame()
 
 void OnPullGameModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_PullGame()
@@ -102,7 +101,7 @@ stock void Event_PlayerDeath_PullGame(int client)
 
 public Action Cmd_PullGameToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s PullGame Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;

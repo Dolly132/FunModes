@@ -56,7 +56,7 @@ stock void OnPluginStart_SlapMode()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = SLAPMODE_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -66,9 +66,8 @@ stock void OnPluginStart_SlapMode()
 
 void OnSlapModeModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_SlapMode() {}
@@ -113,7 +112,7 @@ stock void Event_PlayerDeath_SlapMode(int client)
 
 public Action Cmd_SlapModeToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s SlapMode Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -202,7 +201,7 @@ Action Timer_SlapMode(Handle timer)
 		return Plugin_Handled;
 		
 	int neededHumans = THIS_MODE_INFO.cvarInfo[SLAPMODE_CONVAR_RANDOMS_COUNT].cvar.IntValue;
-	int enough = 0;
+	int enough = 1;
 	do 
 	{
 		int human = humans[GetRandomInt(0, humansCount - 1)];

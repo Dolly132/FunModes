@@ -56,6 +56,8 @@ stock void OnPluginStart_Fog()
 		("0,1"), "bool"
 	);
 
+	THIS_MODE_INFO.enableIndex = FOG_CONVAR_TOGGLE;
+	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 
@@ -64,9 +66,8 @@ stock void OnPluginStart_Fog()
 
 void OnFogModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_Fog()
@@ -382,7 +383,7 @@ public int FogColorsMenu_Handler(Menu menu, MenuAction action, int param1, int p
 
 public Action Cmd_FogToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s Fog mode is currently disabled!", THIS_MODE_INFO.tag);
 		return Plugin_Handled;

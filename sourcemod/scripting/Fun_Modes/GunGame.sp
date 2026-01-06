@@ -75,8 +75,6 @@ enum struct GunGame_Data
 
 GunGame_Data g_GunGameData[MAXPLAYERS + 1];
 
-Handle g_hGunGameSDKCall;
-
 stock void OnPluginStart_GunGame()
 {
 	THIS_MODE_INFO.name = "GunGame";
@@ -136,41 +134,18 @@ stock void OnPluginStart_GunGame()
 		("0,1"), "bool"
 	);
 	
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = GUNGAME_CONVAR_TOGGLE;
 	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 	
 	THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_TOGGLE].cvar.AddChangeHook(OnGunGameModeToggle);
-	
-	GameData gd = new GameData("funmodes.games.txt");
-	
-	int offset = gd.GetOffset("Weapon_Switch");
-	if (offset == -1)
-	{
-		LogError("[FM-%s] Could not find the offset of \"Weapon_Switch\", some features may be neglected", THIS_MODE_INFO.name);
-		return;
-	}
-	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetVirtual(offset);
-	
-	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
-	
-	g_hGunGameSDKCall = EndPrepSDKCall();
-	
-	if (g_hGunGameSDKCall == null)
-		LogError("[FM-%s] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle", THIS_MODE_INFO.name);
-
-	delete gd;
 }
 
 void OnGunGameModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_GunGame() {}
@@ -242,7 +217,7 @@ stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
 	if (!THIS_MODE_INFO.isOn)
 		return;
 		
-	if (!(1<=attacker<=MaxClients) || !ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
+	if (!(1<=attacker<=MaxClients) || !IsPlayerAlive(attacker) || !IsPlayerAlive(victim) || !ZR_IsClientZombie(victim) || !ZR_IsClientHuman(attacker))
 		return;
 	
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue && EntWatch_HasSpecialItem(attacker))
@@ -318,7 +293,7 @@ public Action CS_OnBuyCommand(int client, const char[] weapon)
 
 public Action Cmd_GunGameToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s GunGame Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -466,8 +441,8 @@ void GunGame_EquipWeapon(int client, const char[] weaponName, bool keepSecondary
 	g_GunGameData[client].allowEquip = true;
 	EquipPlayerWeapon(client, weapon);
 
-	if (g_hGunGameSDKCall != null)
-		SDKCall(g_hGunGameSDKCall, client, weapon, 0);
+	if (g_hSwitchSDKCall != null)
+		SDKCall(g_hSwitchSDKCall, client, weapon, 0);
 
 	g_GunGameData[client].allowEquip = false;
 }

@@ -50,6 +50,8 @@ stock void OnPluginStart_DamageGame()
 		("0,1"), "bool"
 	);
 	
+	THIS_MODE_INFO.enableIndex = DAMAGEGAME_CONVAR_TOGGLE;
+	
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
 
@@ -60,9 +62,8 @@ stock void OnPluginStart_DamageGame()
 
 void OnDamageGameModeToggle(ConVar cvar, const char[] oldValue, const char[] newValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 void OnDamageGameModeChange(ConVar cvar, const char[] oldValue, const char[] newValue)
@@ -159,7 +160,7 @@ stock void OnWeaponEquip_DamageGame(int client, int weapon, Action &result)
 
 public Action Cmd_DamageGameToggle(int client, int args)
 {
-	if (THIS_MODE_INFO.enabled)
+	if (THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s Damage Game mode is currently disabled!", THIS_MODE_INFO.tag);
 		return Plugin_Handled;

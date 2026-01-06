@@ -70,7 +70,7 @@ stock void OnPluginStart_VIPMode()
 		("0,1"), "bool"
 	);
 
-	THIS_MODE_INFO.enabled = true;
+	THIS_MODE_INFO.enableIndex = VIPMODE_CONVAR_TOGGLE;
 
 	THIS_MODE_INFO.index = g_arModesInfo.Length;
 	g_arModesInfo.PushArray(THIS_MODE_INFO);
@@ -80,9 +80,8 @@ stock void OnPluginStart_VIPMode()
 
 void OnVIPModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	CHANGE_MODE_INFO(THIS_MODE_INFO, enabled, cvar.BoolValue, THIS_MODE_INFO.index);
 	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
 stock void OnMapStart_VIPMode() {}
@@ -112,18 +111,13 @@ stock void OnClientDisconnect_VIPMode(int client)
 {
 	delete g_hVIPBeaconTimer[client];
 	
-	if (!THIS_MODE_INFO.isOn) {
+	if (!THIS_MODE_INFO.isOn)
 		return;
-	}
 	
-	if (!g_bIsVIP[client]) {
+	if (!g_bIsVIP[client])
 		return;
-	}
 	
 	RemoveClientVIP(client, true, "VIPMode_VIPDeathDisconnect");
-
-	delete g_hKillAllTimer;
-	g_hKillAllTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_COUNT].cvar.FloatValue, VIPMode_KillAllTimer, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock void ZR_OnClientInfected_VIPMode(int client)
@@ -319,7 +313,7 @@ Action VIP_BeaconTimer(Handle timer, int userid)
 
 public Action Cmd_VIPModeToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s VIPmode is currently disabled!", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -557,7 +551,7 @@ int Menu_VIPModeSettings(Menu menu, MenuAction action, int param1, int param2)
 
 void ShowCurrentVIPs(int client)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 		return;
 
 	Menu menu = new Menu(Menu_VIPCurrentVIPs);
@@ -630,7 +624,7 @@ int Menu_VIPCurrentVIPs(Menu menu, MenuAction action, int param1, int param2)
 
 void ShowSetPlayerVIP(int client)
 {
-	if (!THIS_MODE_INFO.enabled)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 		return;
 
 	Menu menu = new Menu(Menu_VIPSetPlayerVIP);

@@ -46,6 +46,9 @@ int g_iCounter = 0;
 ConVar g_cvHUDChannel;
 int g_iPreviousModeIndex[MAXPLAYERS+1];
 
+/* SDKCall Handles */
+Handle g_hSwitchSDKCall;
+
 #define Beacon_Sound        "buttons/blip1.wav"
 
 #define FFADE_IN       (0x0001) // Fade in
@@ -72,7 +75,7 @@ enum struct ModeInfo
 	char tag[64];
 	ConVarInfo cvarInfo[MAX_CVARS_NUM];
 	bool isOn;
-	bool enabled;
+	int enableIndex;
 }
 
 ArrayList g_arModesInfo;
