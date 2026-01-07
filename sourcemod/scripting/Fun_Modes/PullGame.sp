@@ -114,6 +114,12 @@ stock void OnClientPutInServer_PullGame(int client)
 
 stock void OnClientDisconnect_PullGame(int client)
 {
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (g_iPullClientTarget[i] == client)
+			g_iPullClientTarget[i] = -1;
+	}
+	
 	PullGame_ResetVariablesClient(client);
 }
 
@@ -162,7 +168,7 @@ public Action Cmd_PullGameToggle(int client, int args)
 		int zombiesCount = THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_RANDOMS_ZOMBIES].cvar.IntValue;
 		int interval = THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_TIMER_INTERVAL].cvar.IntValue;
 		
-		CPrintToChatAll("%s {olive}%d Random Humans {lightgreen}and {olive}%d Random Zombies {lightgreen}will be selected for the pullgame every %d seconds", humansCount, zombiesCount, interval);
+		CPrintToChatAll("%s {olive}%d Random Humans {lightgreen}and {olive}%d Random Zombies {lightgreen}will be selected for the pullgame every %d seconds", THIS_MODE_INFO.tag, humansCount, zombiesCount, interval);
 	}
 	else
 		PullGame_ToggleTimer(false);
@@ -237,6 +243,12 @@ void PullGame_ToggleTimer(bool toggle)
 
 Action Timer_PullGame(Handle timer)
 {
+	if (g_bRoundEnd || !g_bMotherZombie)
+	{
+		g_hPullGameTimer = null;
+		return Plugin_Stop;
+	}
+	
 	int humansMaxCount = THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_RANDOMS_HUMANS].cvar.IntValue;
 	int zombiesMaxCount = THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_RANDOMS_ZOMBIES].cvar.IntValue;
 	
@@ -343,6 +355,12 @@ void Cmd_Pull(int client)
 		return;
 	}
 	
+	if (g_iPullClientTarget[client] != -1)
+	{
+		CPrintToChat(client, "%s You cannot use this command more than once while you are activating it.", THIS_MODE_INFO.tag);
+		return;
+	}
+	
 	int target = GetClientAimTarget(client);
 	if (target == -1)
 	{
@@ -381,7 +399,7 @@ void PullGame_StartGrab(int client, int target)
 	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);
 	
 	CreateTimer(THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_PULL_TIME].cvar.FloatValue, Timer_PullGameFinish, client, TIMER_FLAG_NO_MAPCHANGE);
-	CreateTimer(0.05, PullGame_Pull_Timer, client, TIMER_REPEAT);
+	CreateTimer(0.05, PullGame_Pull_Timer, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 Action Timer_PullGameFinish(Handle timer, int client)
@@ -406,6 +424,7 @@ Action Timer_PullGameFinish(Handle timer, int client)
 	if (reset)
 		g_bPullState[target] = false;
 		
+	g_iPullClientTarget[client] = -1;
 	g_bPullGameHas[client] = false;
 	return Plugin_Stop;
 }
@@ -413,7 +432,7 @@ Action Timer_PullGameFinish(Handle timer, int client)
 Action PullGame_Pull_Timer(Handle timer, int client)
 {
 	int target = g_iPullClientTarget[client];
-	if (target == -1 || !IsPlayerAlive(target) || !IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+	if (target == -1 || !IsPlayerAlive(target) || !IsPlayerAlive(client))
 		return Plugin_Stop;
 	
 	float clientEyePos[3], targetEyePos[3];

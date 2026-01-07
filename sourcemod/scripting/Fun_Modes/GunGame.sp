@@ -34,7 +34,9 @@ ModeInfo g_GunGameInfo;
 #define GUNGAME_CONVAR_M249_DAMAGE		4
 #define GUNGAME_CONVAR_ENTWATCH			5
 #define GUNGAME_CONVAR_HEGRENADES_COUNT 6
-#define GUNGAME_CONVAR_TOGGLE 			7
+#define GUNGAME_CONVAR_REWARD_GRAVITY	7
+#define GUNGAME_CONVAR_REWARD_SPEED		8
+#define GUNGAME_CONVAR_TOGGLE 			9
 
 static const char g_GunGameWeaponsList[][][] =
 {
@@ -65,6 +67,7 @@ enum struct GunGame_Data
 	float originalGravity;
 	
 	GunGame_Reward reward;
+	Handle rewardTimer;
 	
 	void ResetLevel()
 	{
@@ -129,6 +132,18 @@ stock void OnPluginStart_GunGame()
 	);
 	
 	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_REWARD_GRAVITY,
+		"sm_gungame_gravity_reward", "100.0", "How many seconds can the player keep their low gravity hold",
+		("20.0,30.0,40.0,60.0,80.0,100.0"), "float"
+	);
+	
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_REWARD_SPEED,
+		"sm_gungame_speed_reward", "100.0", "How many seconds can the player keep their high speed hold",
+		("20.0,30.0,40.0,60.0,80.0,100.0"), "float"
+	);
+	
+	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_TOGGLE,
 		"sm_gungame_enable", "1", "Enable/Disable GunGame Mode (This differs from turning it on/off)",
 		("0,1"), "bool"
@@ -152,6 +167,9 @@ stock void OnMapStart_GunGame() {}
 stock void OnMapEnd_GunGame()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+	
+	for (int i = 1; i <= MaxClients; i++)
+		g_GunGameData[i].rewardTimer = null;
 }
 
 stock void OnClientPutInServer_GunGame(int client)
@@ -176,7 +194,7 @@ stock void OnClientPutInServer_GunGame(int client)
 
 stock void OnClientDisconnect_GunGame(int client)
 {
-	#pragma unused client
+	delete g_GunGameData[client].rewardTimer;
 }
 
 stock void ZR_OnClientInfected_GunGame(int client)
@@ -188,6 +206,9 @@ stock void Event_RoundStart_GunGame() {}
 stock void Event_RoundEnd_GunGame() {}
 stock void Event_PlayerSpawn_GunGame(int client)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
 	CreateTimer(1.0, Timer_GunGame_CheckPlayerSpawn, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
@@ -261,7 +282,6 @@ stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 	if (!g_GunGameData[client].allowEquip)
 	{
 		result = Plugin_Handled;
-		CPrintToChat(client, "%s You cannot buy/equip weapons during GunGame Escape Mode", THIS_MODE_INFO.tag);
 		return;
 	}
 }
@@ -520,6 +540,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed + 0.3);
 			
 			CPrintToChat(client, "%s You have been granted an extra speed for finishing a gungame cycle!", THIS_MODE_INFO.tag);
+			
+			delete g_GunGameData[client].rewardTimer;
+			g_GunGameData[client].rewardTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_REWARD_GRAVITY].cvar.FloatValue, Timer_GunGameReward, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
 		case REWARD_GRAVITY:
@@ -532,10 +555,16 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			SetEntityGravity(client, 0.5);
 			
 			CPrintToChat(client, "%s You have been granted a lower gravity for finishing a gungame cycle!", THIS_MODE_INFO.tag);
+			
+			delete g_GunGameData[client].rewardTimer;
+			g_GunGameData[client].rewardTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_REWARD_GRAVITY].cvar.FloatValue, Timer_GunGameReward, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
 		case REWARD_HEGRENADES:
 		{
+			/* Delete Timer */
+			delete g_GunGameData[client].rewardTimer;
+			
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
 				SetEntityGravity(client, g_GunGameData[client].originalGravity);
@@ -555,6 +584,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 		
 		default:
 		{
+			/* Delete Timer */
+			delete g_GunGameData[client].rewardTimer;
+			
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
 				SetEntityGravity(client, g_GunGameData[client].originalGravity);
@@ -564,4 +596,17 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 				SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed);
 		}
 	}
+}
+
+Action Timer_GunGameReward(Handle timer, int userid)
+{
+	int client = GetClientOfUserId(userid);
+	if (!client)
+		return Plugin_Stop;
+	
+	g_GunGameData[client].rewardTimer = null;
+	
+	CPrintToChat(client, "%s Sorry, your reward has ended!", THIS_MODE_INFO.tag);
+	GunGame_GiveReward(client, REWARD_NONE);
+	return Plugin_Stop;
 }

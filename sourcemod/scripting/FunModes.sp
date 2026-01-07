@@ -57,27 +57,31 @@ public void OnPluginStart()
 		RegAdminCmd(commands[i], Cmd_FunModes, ADMFLAG_CONVARS, "Show all available funmodes");
 	}
 	
-	GameData gd = new GameData("funmodes.games.txt");
-	
-	int offset = gd.GetOffset("Weapon_Switch");
-	if (offset == -1)
+	GameData gd = new GameData("funmodes.games");
+	if (gd == null)
+		LogError("[FunModes] Could not find \"funmodes.games.txt\" file.");
+	else
 	{
-		LogError("[FunModes] Could not find the offset of \"Weapon_Switch\", some features may be neglected");
-		return;
+		int offset = gd.GetOffset("Weapon_Switch");
+		if (offset == -1)
+		{
+			LogError("[FunModes] Could not find the offset of \"Weapon_Switch\", some features may be neglected");
+			return;
+		}
+		
+		StartPrepSDKCall(SDKCall_Player);
+		PrepSDKCall_SetVirtual(270);
+		
+		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
+		
+		g_hSwitchSDKCall = EndPrepSDKCall();
+		
+		if (g_hSwitchSDKCall == null)
+			LogError("[FunModes] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle");
+	
+		delete gd;
 	}
-	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetVirtual(270);
-	
-	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
-	PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
-	
-	g_hSwitchSDKCall = EndPrepSDKCall();
-	
-	if (g_hSwitchSDKCall == null)
-		LogError("[FunModes] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle", THIS_MODE_INFO.name);
-
-	delete gd;
 }
 
 public void OnPluginEnd()

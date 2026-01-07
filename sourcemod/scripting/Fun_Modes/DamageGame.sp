@@ -116,6 +116,8 @@ stock void Event_RoundStart_DamageGame()
 		
 	for (int i = 1; i <= MaxClients; i++)
 		g_iDealtDamage[i] = -1;
+		
+	delete g_hDamageGameTimer;
 }
 
 stock void Event_RoundEnd_DamageGame() {}
@@ -160,7 +162,7 @@ stock void OnWeaponEquip_DamageGame(int client, int weapon, Action &result)
 
 public Action Cmd_DamageGameToggle(int client, int args)
 {
-	if (THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
 		CReplyToCommand(client, "%s Damage Game mode is currently disabled!", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -187,7 +189,7 @@ public Action Cmd_DamageGameToggle(int client, int args)
 			OnClientPutInServer_DamageGame(i);
 		}
 		
-		DamageGame_StartTimers();
+		CS_TerminateRound(3.0, CSRoundEnd_Draw);
 	}
 	else
 	{
@@ -228,13 +230,18 @@ Action Timer_DamageGame(Handle timer)
 	
 	int lowestDamage = 999999, count, clients[MAXPLAYERS + 1];
 	
+	int mode = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue;
+	
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		int thisDamage = 0;
 		if (g_iDealtDamage[i] < 0)
 		{
 			if (!IsClientInGame(i) || !IsPlayerAlive(i) || ZR_IsClientZombie(i))
+			{
+				g_iDealtDamage[i] = -1;
 				continue;
+			}
 				
 			g_iDealtDamage[i] = 0;
 		}
@@ -243,26 +250,23 @@ Action Timer_DamageGame(Handle timer)
 			thisDamage = g_iDealtDamage[i];
 		}
 		
-		if (thisDamage >= 0 && thisDamage < lowestDamage)
+		if ((mode > 0 && thisDamage == 0) || (mode != 1 && (thisDamage == 0 || thisDamage < lowestDamage)))
 		{
-			if (thisDamage == 0)
-				clients[count++] = i;
-				
+			clients[count++] = i;
 			lowestDamage = thisDamage;
 		}
 	}
 	
-	int mode = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue;
 	if (mode == 0 && lowestDamage == 999999)
 		return Plugin_Continue;
 	
 	if (!count)
 		return Plugin_Continue;
-		
+	
 	/* Depending on the damagegame mode, we will specify which clients to damage */
 	for (int i = 0; i < count; i++)
 	{
-		int client = clients[count];
+		int client = clients[i];
 		switch (mode)
 		{
 			case 0:
@@ -283,7 +287,6 @@ Action Timer_DamageGame(Handle timer)
 					DamageGame_DamagePlayer(client);
 			}
 		}
-			
 	}
 	
 	if (mode > 0)

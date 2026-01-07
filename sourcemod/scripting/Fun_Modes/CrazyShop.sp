@@ -216,27 +216,7 @@ Database g_hCrazyShop_DB;
 #define PLAYER_RESET_TEMP_VARS(%1)	g_CrazyShopPlayerData[%1].Reset(true)
 #define PLAYER_TEMP_VAR(%1,%2)		g_CrazyShopPlayerData[%1].%2
 /***************************************************************/
-/* Laser attributes constatns: */
 #define PROP_MODEL              "models/props/cs_office/vending_machine.mdl"
-#define PRECACHE_MOVE_SND       "nide/laser.wav"
-#define MOVE_SND                "sound/nide/laser.wav"
-
-#define LASER_DISTANCE_START    250.0
-#define LASER_DISTANCE_END      2000.0
-
-#define LASER_SPEED             3000
-
-#define LASER_HEIGHT            30
-
-#define LASER_KILL_TIMER        2.5
-#define LASER_REPEAT_TIMER      2.0
-
-#define LASER_ENABLE_DMG        true
-#define LASER_DAMAGE            999999.0
-
-#define SF_NOUSERCONTROL        2
-#define SF_PASSABLE             8
-/***************************************************************/
 
 stock void OnPluginStart_CrazyShop()
 {
@@ -1866,6 +1846,9 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 		
 		int wp = GivePlayerItem(client, PLAYER_TEMP_VAR(client, originalWeapon));
 		EquipPlayerWeapon(client, wp);
+		if (g_hSwitchSDKCall != null)
+			SDKCall(g_hSwitchSDKCall, client, wp, 0);
+			
 		PLAYER_TEMP_VAR(client, originalWeapon)[0] = '\0';
 	}
 
