@@ -57,9 +57,9 @@ public void OnPluginStart()
 		RegAdminCmd(commands[i], Cmd_FunModes, ADMFLAG_CONVARS, "Show all available funmodes");
 	}
 	
-	GameData gd = new GameData("funmodes.games");
+	GameData gd = new GameData("sdkhooks.games/engine.ep2v");
 	if (gd == null)
-		LogError("[FunModes] Could not find \"funmodes.games.txt\" file.");
+		LogError("[FunModes] Could not find \"sdkhooks.games/engine.ep2v.txt\" file.");
 	else
 	{
 		int offset = gd.GetOffset("Weapon_Switch");
