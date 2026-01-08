@@ -70,7 +70,7 @@ public void OnPluginStart()
 		}
 		
 		StartPrepSDKCall(SDKCall_Player);
-		PrepSDKCall_SetVirtual(270);
+		PrepSDKCall_SetVirtual(offset);
 		
 		PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
 		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_ByValue);
