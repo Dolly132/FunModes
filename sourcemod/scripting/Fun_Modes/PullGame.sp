@@ -394,9 +394,10 @@ void PullGame_StartGrab(int client, int target)
 	g_iPullClientTarget[client] = target;
 	
 	if (!g_bPullState[target])
+	{
 		g_fPullOriginalSpeed[target] = GetEntPropFloat(target, Prop_Send, "m_flMaxspeed");
-		
-	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);
+		SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);
+	}
 	
 	CreateTimer(THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_PULL_TIME].cvar.FloatValue, Timer_PullGameFinish, client, TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(0.05, PullGame_Pull_Timer, client, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -422,8 +423,11 @@ Action Timer_PullGameFinish(Handle timer, int client)
 	}
 	
 	if (reset)
+	{
+		SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", g_fPullOriginalSpeed[target]);
 		g_bPullState[target] = false;
-		
+	}
+	
 	g_iPullClientTarget[client] = -1;
 	g_bPullGameHas[client] = false;
 	return Plugin_Stop;
@@ -439,14 +443,15 @@ Action PullGame_Pull_Timer(Handle timer, int client)
 	GetClientEyePosition(client, clientEyePos);
 	GetClientEyePosition(target, targetEyePos);
 	
-	float velocity[3];
-	SubtractVectors(clientEyePos, targetEyePos, velocity);
-	NormalizeVector(velocity, velocity);
-	ScaleVector(velocity, g_fPullGameSpeed);
-	
 	float distance = GetVectorDistance(clientEyePos, targetEyePos, true);
-	if (distance > (200.0*200.0))
+	if (distance > 40000.0)
+	{
+		float velocity[3];
+		SubtractVectors(clientEyePos, targetEyePos, velocity);
+		NormalizeVector(velocity, velocity);
+		ScaleVector(velocity, g_fPullGameSpeed);
 		TeleportEntity(target, _, _, velocity);
+	}
 	
 	TE_SetupBeamPoints(clientEyePos, targetEyePos, g_iLaserBeam, 0, 0, 66, 0.2, 1.0, 10.0, 0, 0.0, {255,255,255,255}, 0);
 	TE_SendToAll();

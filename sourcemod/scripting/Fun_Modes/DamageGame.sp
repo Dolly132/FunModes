@@ -8,6 +8,7 @@ ModeInfo g_DamageGameInfo;
 
 int g_iDealtDamage[MAXPLAYERS + 1] = {-1, ...};
 Handle g_hDamageGameTimer;
+bool g_bDamageGameDisable;
 
 #define DAMAGEGAME_CONVAR_TIME_INTERVAL	0
 #define DAMAGEGAME_CONVAR_DAMAGE		1
@@ -224,7 +225,10 @@ Action Timer_DamageGame(Handle timer)
 		g_hDamageGameTimer = null;
 		return Plugin_Stop;
 	}
-
+	
+	if (g_bDamageGameDisable)
+		return Plugin_Handled;
+		
 	if (!g_bMotherZombie || g_bRoundEnd)
 		return Plugin_Handled;
 	
@@ -318,8 +322,12 @@ public void Cmd_DamageGameSettings(int client)
 
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
 
-	menu.AddItem(NULL_STRING, "Show Cvars\n");
-
+	menu.AddItem(NULL_STRING, "Show Cvars\n ");
+	
+	char item[20];
+	FormatEx(item, sizeof(item), "%s Damage", g_bDamageGameDisable ? "Enable" : "Disable");
+	menu.AddItem(NULL_STRING, item);
+	
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -339,7 +347,13 @@ int Menu_DamageGameSettings(Menu menu, MenuAction action, int param1, int param2
 
 		case MenuAction_Select:
 		{
-			ShowCvarsInfo(param1, THIS_MODE_INFO);
+			if (param2 == 0)
+				ShowCvarsInfo(param1, THIS_MODE_INFO);
+			else
+			{
+				g_bDamageGameDisable = !g_bDamageGameDisable;
+				Cmd_DamageGameSettings(param1);
+			}
 		}
 	}
 

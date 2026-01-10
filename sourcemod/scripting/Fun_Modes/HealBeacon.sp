@@ -645,7 +645,6 @@ Action Cmd_HealBeaconToggle(int client, int args)
 	
 	if (THIS_MODE_INFO.isOn)
 	{
-		THIS_MODE_INFO.isOn = false;
 		delete g_aHBPlayers;
 
 		HealBeacon_DeleteAllTimers();
@@ -657,8 +656,6 @@ Action Cmd_HealBeaconToggle(int client, int args)
 	}
 	else
 	{
-		THIS_MODE_INFO.isOn = true;
-	
 		/* Event hooks */
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
 		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);

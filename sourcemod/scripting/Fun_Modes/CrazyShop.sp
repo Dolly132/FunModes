@@ -530,6 +530,8 @@ void CrazyShop_CheckIgnite(int userid)
 
 stock void OnPlayerRunCmdPost_CrazyShop(int client, int buttons, int impulse)
 {
+	#pragma unused buttons
+	
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
@@ -540,24 +542,9 @@ stock void OnPlayerRunCmdPost_CrazyShop(int client, int buttons, int impulse)
 	if (currentTime <= PLAYER_TEMP_VAR(client, lastUse))
 		return;
 		
-	// RELOAD shortcut for zombies, FLASHLIGHT shortcut for humans
-	bool isZombie = ZR_IsClientZombie(client);
-	
-	if (buttons & IN_RELOAD)
-	{
-		if (!isZombie)
-			return;
-			
-		PLAYER_TEMP_VAR(client, lastUse) = currentTime + 2;
-		CrazyShop_OpenAvailableItems(client);
-	}
-	
 	// https://github.com/ValveSoftware/source-sdk-2013/blob/7191ecc418e28974de8be3a863eebb16b974a7ef/src/game/server/player.cpp#L6073
 	if (impulse == 100)
-	{
-		if (isZombie)
-			return;
-			
+	{	
 		PLAYER_TEMP_VAR(client, lastUse) = currentTime + 2;
 		CrazyShop_OpenAvailableItems(client);	
 	}
@@ -1309,7 +1296,7 @@ int Menu_CrazyShop(Menu menu, MenuAction action, int param1, int param2)
 			PLAYER_CREDITS(param1) -= g_CrazyShopItems[param2].price;
 			PLAYER_ITEM_COUNT(param1, param2) += 1;
 			CPrintToChat(param1, "%s You have successfully bought {olive}%s, {lightgreen}Type !myitems to activate it!", THIS_MODE_INFO.tag, g_CrazyShopItems[param2].name);
-			CPrintToChat(param1, "{lightgreen}You can also press the {olive}Reload button {lightgreen}if you were a zombie\nOr {olive}FlashLight {lightgreen}if you were a human");
+			CPrintToChat(param1, "{lightgreen}You can also press the {olive}FlashLight {lightgreen}button to see your inventory!");
 			CrazyShop_OpenMenu(param1);
 		}
 	}
@@ -1385,7 +1372,7 @@ int Menu_CrazyShop_Gift(Menu menu, MenuAction action, int param1, int param2)
 	return -1;
 }
 
-void CrazyShop_OpenAvailableItems(int client, bool forceMenu = false)
+void CrazyShop_OpenAvailableItems(int client)
 {
 	if (!g_bMotherZombie || g_bRoundEnd)
 		return;
@@ -1393,7 +1380,6 @@ void CrazyShop_OpenAvailableItems(int client, bool forceMenu = false)
 	int itemsCount = 0;
 	
 	Menu menu;
-	int lastItem;
 	
 	if (!IsPlayerAlive(client))
 	{
@@ -1406,37 +1392,32 @@ void CrazyShop_OpenAvailableItems(int client, bool forceMenu = false)
 		if (((g_CrazyShopItems[i].team == 0 && ZR_IsClientZombie(client)) || 
 			(g_CrazyShopItems[i].team == 1 && ZR_IsClientHuman(client))) && PLAYER_ITEM_COUNT(client, i))
 		{
-			lastItem = i;
 			itemsCount++;
 		}
 		
-		if (menu == null)
+		if (itemsCount > 0)
 		{
-			menu = new Menu(Menu_AvailableItems);
-			menu.SetTitle("[CrazyShop] Your Available Items!");
-		}
+			if (menu == null)
+			{
+				menu = new Menu(Menu_AvailableItems);
+				menu.SetTitle("[CrazyShop] Your Available Items!");
+			}
 		
-		if (menu && PLAYER_ITEM_COUNT(client, i) > 0)
-		{
-			char item[64];
-			FormatEx(item, sizeof(item), "%s - Activate", g_CrazyShopItems[i].name);
-			
-			char data[3];
-			IntToString(i, data, sizeof(data));
-			menu.AddItem(data, item);
+			if (menu && PLAYER_ITEM_COUNT(client, i) > 0)
+			{
+				char item[64];
+				FormatEx(item, sizeof(item), "%s - Activate", g_CrazyShopItems[i].name);
+				
+				char data[3];
+				IntToString(i, data, sizeof(data));
+				menu.AddItem(data, item);
+			}
 		}
 	}
 	
 	if (!itemsCount)
 	{
 		CPrintToChat(client, "%s You have no available items!", THIS_MODE_INFO.tag);
-		return;
-	}
-	
-	if (!forceMenu && itemsCount == 1)
-	{
-		delete menu;
-		CrazyShop_Activate(client, lastItem);
 		return;
 	}
 	
@@ -1489,7 +1470,7 @@ int Menu_AvailableItems(Menu menu, MenuAction action, int param1, int param2)
 			}
 			
 			CrazyShop_Activate(param1, itemNum);
-			CrazyShop_OpenAvailableItems(param1, true);
+			CrazyShop_OpenAvailableItems(param1);
 		}
 	}
 	
@@ -1835,7 +1816,7 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 	if (!THIS_MODE_INFO.isOn || g_bRoundEnd)
 		return Plugin_Stop;
 	
-	if (PLAYER_TEMP_VAR(client, originalWeapon)[0])
+	if (IsPlayerAlive(client) && ZR_IsClientHuman(client) && PLAYER_TEMP_VAR(client, originalWeapon)[0])
 	{
 		int current = GetPlayerWeaponSlot(client, CS_SLOT_PRIMARY);
 		if (current != -1)
@@ -1957,8 +1938,8 @@ Action Timer_SlowBeaconRepeat(Handle timer, int userid)
 		if (!PLAYER_TEMP_VAR(i, gotSlowed) && squarredDistance <= ((beaconRadius/2.0)*(beaconRadius/2.0)))
 		{
 			PLAYER_TEMP_VAR(i, gotSlowed) = true;
-			PLAYER_TEMP_VAR(i, originalSpeed) = GetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue");
-			SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", g_CrazyShopItems[itemNum].amount);
+			PLAYER_TEMP_VAR(i, originalSpeed) = GetEntPropFloat(i, Prop_Send, "m_flMaxspeed");
+			SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(i, originalSpeed) + g_CrazyShopItems[itemNum].amount);
 		}
 		else
 		{
@@ -1969,7 +1950,7 @@ Action Timer_SlowBeaconRepeat(Handle timer, int userid)
 					continue;
 					
 				PLAYER_TEMP_VAR(i, gotSlowed) = false;
-				SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", PLAYER_TEMP_VAR(i, originalSpeed));
+				SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(i, originalSpeed));
 			}
 		}
 	}
@@ -2154,21 +2135,22 @@ Action CrazyShop_Timer_Grabbing(Handle timer, int client)
 		return Plugin_Stop;
 	
 	int target = PLAYER_TEMP_VAR(client, grabbedTarget);
-	if (target == -1 || !IsPlayerAlive(target) || !IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+	if (target == -1 || !IsPlayerAlive(target) || !ZR_IsClientHuman(target) || !IsPlayerAlive(client) || ZR_IsClientHuman(client))
 		return Plugin_Stop;
 	
 	float clientEyePos[3], targetEyePos[3];
 	GetClientEyePosition(client, clientEyePos);
 	GetClientEyePosition(target, targetEyePos);
 	
-	float velocity[3];
-	SubtractVectors(clientEyePos, targetEyePos, velocity);
-	NormalizeVector(velocity, velocity);
-	ScaleVector(velocity, 300.0);
-	
 	float distance = GetVectorDistance(clientEyePos, targetEyePos, true);
-	if (distance > (200.0*200.0))
+	if (distance > 40000.0)
+	{
+		float velocity[3];
+		SubtractVectors(clientEyePos, targetEyePos, velocity);
+		NormalizeVector(velocity, velocity);
+		ScaleVector(velocity, 300.0);
 		TeleportEntity(target, _, _, velocity);
+	}
 	
 	TE_SetupBeamPoints(clientEyePos, targetEyePos, g_iLaserBeam, 0, 0, 66, 0.2, 1.0, 10.0, 0, 0.0, {255,255,255,255}, 0);
 	TE_SendToAll();
