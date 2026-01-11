@@ -218,7 +218,12 @@ Action Timer_GunGame_CheckPlayerSpawn(Handle timer, int userid)
 	if (!client)
 		return Plugin_Stop;
 		
+	GunGame_GiveReward(client, REWARD_NONE);
 	g_GunGameData[client].ResetLevel();
+	
+	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+		return Plugin_Stop;
+		
 	GunGame_EquipWeapon(client, g_GunGameWeaponsList[0][GetRandomInt(0, 1)]);
 	return Plugin_Stop;
 }
@@ -568,7 +573,7 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 			CPrintToChat(client, "%s You have been granted an extra speed for finishing a gungame cycle!", THIS_MODE_INFO.tag);
 			
 			delete g_GunGameData[client].rewardTimer;
-			g_GunGameData[client].rewardTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_REWARD_GRAVITY].cvar.FloatValue, Timer_GunGameReward, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+			g_GunGameData[client].rewardTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_REWARD_SPEED].cvar.FloatValue, Timer_GunGameReward, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 		}
 		
 		case REWARD_GRAVITY:

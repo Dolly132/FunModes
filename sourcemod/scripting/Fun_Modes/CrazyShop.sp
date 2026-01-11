@@ -19,26 +19,6 @@
 	By @kiku-san
 */
 
-/* 
-	Based on the suggestion above, there wll be these rewards (depending on the team):
-	- Humans Rewards:
-		- More HP (+x) (Integer)
-		- Infect Protection (For x seconds) (Integer)
-		- Golden Weapon (Sets zombie on fire) (For x seconds) (String + Integer)
-		- Laser Protection (For x seconds) (Integer)
-		
-	- Zombies Rewards:
-		- More speed (+x.y) (Float)
-		- KB Protection (for x seconds) (Integer)
-		- Lower Gravtiy (-x.y) (Float)
-		- Ignite Immunity (for x seconds) (Integer)
-		- Chat Command (x times) (Integer)
-		- Invisibility (for x seconds) (Integer)
-		- Weapons Killer (x times) (Integer)
-		- Magical Laser (x times) (Integer) (It will either be a slowing laser or a hurting one)
-		- Magical Killing Laser (x times) (Integer) (It will be a laser that humans need to dodge, the price of this is gonna be high)
-*/
-
 #define _FM_CrazyShop
 
 #if !defined _KnockbackRestrict_included_
@@ -105,7 +85,7 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Buy a smokegrenade", 1, 10, 0.0, 0.0, DATATYPE_NONE, ""
 	},
 	{
-		"Slow Beacon", 1, 30, -0.7, 15.0, DATATYPE_BOTH, "Speed Value (absolute)"
+		"Slow Beacon", 1, 30, -0.8, 15.0, DATATYPE_BOTH, "Speed Value (absolute)"
 	},
 	
 	/* Zombies Items (Team = 0) */
@@ -1029,7 +1009,7 @@ void CrazyShop_OpenItemAction(int client, int action)
 	
 	if (action == 1)
 	{
-		if (item.type != DATATYPE_AMOUNT && item.type != DATATYPE_BOTH)
+		if (item.type == DATATYPE_TIME)
 		{
 			menu.SetTitle("[CrazyShop] %s - Time\nCurrent Time: %.2f", item.name, item.time);
 			
@@ -1377,7 +1357,7 @@ void CrazyShop_OpenAvailableItems(int client)
 	if (!g_bMotherZombie || g_bRoundEnd)
 		return;
 	
-	int itemsCount = 0;
+	bool found = false;
 	
 	Menu menu;
 	
@@ -1392,18 +1372,15 @@ void CrazyShop_OpenAvailableItems(int client)
 		if (((g_CrazyShopItems[i].team == 0 && ZR_IsClientZombie(client)) || 
 			(g_CrazyShopItems[i].team == 1 && ZR_IsClientHuman(client))) && PLAYER_ITEM_COUNT(client, i))
 		{
-			itemsCount++;
-		}
-		
-		if (itemsCount > 0)
-		{
+			found = true;
+			
 			if (menu == null)
 			{
 				menu = new Menu(Menu_AvailableItems);
 				menu.SetTitle("[CrazyShop] Your Available Items!");
 			}
 		
-			if (menu && PLAYER_ITEM_COUNT(client, i) > 0)
+			if (menu)
 			{
 				char item[64];
 				FormatEx(item, sizeof(item), "%s - Activate", g_CrazyShopItems[i].name);
@@ -1415,7 +1392,7 @@ void CrazyShop_OpenAvailableItems(int client)
 		}
 	}
 	
-	if (!itemsCount)
+	if (!found)
 	{
 		CPrintToChat(client, "%s You have no available items!", THIS_MODE_INFO.tag);
 		return;
@@ -1938,8 +1915,8 @@ Action Timer_SlowBeaconRepeat(Handle timer, int userid)
 		if (!PLAYER_TEMP_VAR(i, gotSlowed) && squarredDistance <= ((beaconRadius/2.0)*(beaconRadius/2.0)))
 		{
 			PLAYER_TEMP_VAR(i, gotSlowed) = true;
-			PLAYER_TEMP_VAR(i, originalSpeed) = GetEntPropFloat(i, Prop_Send, "m_flMaxspeed");
-			SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(i, originalSpeed) + g_CrazyShopItems[itemNum].amount);
+			PLAYER_TEMP_VAR(i, originalSpeed) = GetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue");
+			SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", g_CrazyShopItems[itemNum].amount);
 		}
 		else
 		{
@@ -1950,7 +1927,7 @@ Action Timer_SlowBeaconRepeat(Handle timer, int userid)
 					continue;
 					
 				PLAYER_TEMP_VAR(i, gotSlowed) = false;
-				SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", PLAYER_TEMP_VAR(i, originalSpeed));
+				SetEntPropFloat(i, Prop_Data, "m_flLaggedMovementValue", PLAYER_TEMP_VAR(i, originalSpeed));
 			}
 		}
 	}
