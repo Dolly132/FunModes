@@ -236,7 +236,10 @@ stock void Event_PlayerTeam_HealBeacon(Event event)
 Action RoundStart_Timer(Handle timer)
 {
 	g_hRoundStart_Timer[0] = null;
-
+	
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Stop;
+		
 	/* Let's now pick the random players */
 	for (int i = 0; i < THIS_MODE_INFO.cvarInfo[HB_CONVAR_RANDOMS].cvar.IntValue; i++)
 	{
@@ -251,6 +254,12 @@ Action RoundStart_Timer(Handle timer)
 
 Action RoundStart_CountTimer(Handle timer)
 {
+	if (!THIS_MODE_INFO.isOn)
+	{
+		g_hRoundStart_Timer[1] = null;
+		return Plugin_Stop;
+	}
+	
 	int alertTime = THIS_MODE_INFO.cvarInfo[HB_CONVAR_ALERT_TIMER].cvar.IntValue;
 
 	if (g_iCounter >= alertTime)
@@ -337,7 +346,13 @@ Action HealBeacon_BeaconTimer(Handle timer, int userid)
 	{
 		return Plugin_Stop;
 	}
-
+	
+	if (!THIS_MODE_INFO.isOn)
+	{
+		g_hBeaconTimer[client] = null;
+		return Plugin_Stop;
+	}
+	
 	if (!IsPlayerAlive(client) || GetClientTeam(client) != CS_TEAM_CT || !g_BeaconPlayersData[client].hasHealBeacon)
 	{
 		g_hBeaconTimer[client] = null;
@@ -350,6 +365,12 @@ Action HealBeacon_BeaconTimer(Handle timer, int userid)
 
 Action HealBeacon_DamageTimer(Handle timer)
 {
+	if (!THIS_MODE_INFO.isOn)
+	{
+		g_hDamageTimer = null;
+		return Plugin_Stop;
+	}
+	
 	/* if round is ending */
 	if (g_bRoundEnd)
 		return Plugin_Handled;
@@ -418,6 +439,12 @@ stock void HealBeacon_DealDamage(int client)
 
 Action HealBeacon_HealTimer(Handle timer)
 {
+	if (!THIS_MODE_INFO.isOn)
+	{
+		g_hHealTimer = null;
+		return Plugin_Stop;
+	}
+	
 	/* IF BETTER DAMAGE MODE IS ON THEN stop the timer for a while until its off */
 	/* BETTER DAMAGE mode means that the players will get hurt but they wont get heal */
 	if (g_bIsBetterDamageModeOn)
@@ -635,7 +662,7 @@ stock void ReplaceBeacon(int client, int random, int target)
 /* COMMANDS CALLBACKS */
 /*---------------------*/
 
-Action Cmd_HealBeaconToggle(int client, int args)
+public Action Cmd_HealBeaconToggle(int client, int args)
 {
 	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
 	{
