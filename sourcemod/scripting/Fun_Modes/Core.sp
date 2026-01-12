@@ -128,7 +128,6 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC(%1, DamageGame); \
 		CALL_MODE_FUNC(%1, BlindMode); \
 		CALL_MODE_FUNC(%1, SlapMode); \
-		CALL_MODE_FUNC(%1, MakoKickers); \
 		CALL_MODE_FUNC(%1, ChaosWeapons); \
 		CALL_MODE_FUNC(%1, GunGame); \
 		CALL_MODE_FUNC(%1, MathGame); \
@@ -146,7 +145,6 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC_PARAM(%1, DoubleJump, %2); \
 		CALL_MODE_FUNC_PARAM(%1, DamageGame, %2); \
 		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
-		CALL_MODE_FUNC_PARAM(%1, MakoKickers, %2); \
 		CALL_MODE_FUNC_PARAM(%1, GunGame, %2); \
 		CALL_MODE_FUNC_PARAM(%1, CrazyShop, %2); \
 		CALL_MODE_FUNC_PARAM(%1, RealityShift, %2)
@@ -208,7 +206,6 @@ these commented macros are not used for now
 #include "Fun_Modes/DamageGame.sp"
 #include "Fun_Modes/BlindMode.sp"
 #include "Fun_Modes/SlapMode.sp"
-#include "Fun_Modes/MakoKickers.sp"
 #include "Fun_Modes/ChaosWeapons.sp"
 #include "Fun_Modes/GunGame.sp"
 #include "Fun_Modes/MathGame.sp"

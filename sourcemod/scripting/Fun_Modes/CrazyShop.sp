@@ -176,6 +176,7 @@ enum struct CrazyShop_PlayerData
 CrazyShop_PlayerData g_CrazyShopPlayerData[MAXPLAYERS + 1];
 
 int g_iCrazyShopPreviousItem[MAXPLAYERS + 1];
+int g_iCrazyShopProps;
 
 Database g_hCrazyShop_DB;
 
@@ -269,6 +270,8 @@ stock void OnMapStart_CrazyShop()
 stock void OnMapEnd_CrazyShop()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+	
+	g_iCrazyShopProps = 0;
 }
 
 stock void OnClientPutInServer_CrazyShop(int client)
@@ -1665,6 +1668,12 @@ void CrazyShop_Activate(int client, int itemNum)
 		// Hurting Machine - Zombies
 		case 10:
 		{
+			if (g_iCrazyShopProps >= 2)
+			{
+				CPrintToChat(client, "%s Please wait until the older hurting machines die!", THIS_MODE_INFO.tag);
+				return;
+			}
+			
 			int userid = GetClientOfUserId(client);
 			char propName[64];
 			FormatEx(propName, sizeof(propName), "%d_FM_PROP_%d_%d", RoundToNearest(item.amount), userid, GetGameTime());
@@ -2154,6 +2163,8 @@ Action Timer_CrazyShop_HurtingMachine(Handle timer, DataPack pack)
 	
 	delete pack;
 	
+	g_iCrazyShopProps--;
+	
 	if (prop == INVALID_ENT_REFERENCE)
 		return Plugin_Stop;
 	
@@ -2185,6 +2196,8 @@ void CrazyShop_ThrowProp(int client, int prop)
 	TeleportEntity(prop, spawnOrigin, vecEyeAngles, vecEyeAngles);
 	
 	DispatchSpawn(prop);
+	
+	g_iCrazyShopProps++;
 }
 
 stock int CrazyShop_CreateProp(const char[] name)

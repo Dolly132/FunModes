@@ -265,12 +265,12 @@ public Action Cmd_RLGLToggle(int client, int args)
 
 Action RLGL_Timer(Handle timer)
 {
+	g_hRLGLTimer = null;
+	
 	if (!THIS_MODE_INFO.isOn)
-	{
-		g_hRLGLTimer = null;
 		return Plugin_Stop;
-	}
 
+	delete g_hRLGLWarningTimer;
 	g_hRLGLWarningTimer = CreateTimer(1.0, RLGL_Warning_Timer, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 	
 	StartRLGLTimer();

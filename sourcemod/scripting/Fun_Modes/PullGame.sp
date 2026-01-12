@@ -126,9 +126,19 @@ stock void OnClientDisconnect_PullGame(int client)
 stock void ZR_OnClientInfected_PullGame(int client)
 {
 	#pragma unused client
+	
+	if (!THIS_MODE_INFO.isOn)
+		return;
+		
+	if (!g_bMotherZombie)
+		PullGame_ToggleTimer(true);
 }
 
-stock void Event_RoundStart_PullGame() {}
+stock void Event_RoundStart_PullGame()
+{
+	PullGame_ResetVariables();
+}
+
 stock void Event_RoundEnd_PullGame() {}
 stock void Event_PlayerSpawn_PullGame(int client)
 {
@@ -160,7 +170,8 @@ public Action Cmd_PullGameToggle(int client, int args)
 	
 	if (THIS_MODE_INFO.isOn)
 	{
-		PullGame_ToggleTimer(true);
+		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
+		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 		
 		CPrintToChatAll("%s Press (F) {olive} | Flashlight {lightgreen}to use pull, only when you get selected!", THIS_MODE_INFO.tag);
 		
@@ -169,6 +180,8 @@ public Action Cmd_PullGameToggle(int client, int args)
 		int interval = THIS_MODE_INFO.cvarInfo[PULLGAME_CONVAR_TIMER_INTERVAL].cvar.IntValue;
 		
 		CPrintToChatAll("%s {olive}%d Random Humans {lightgreen}and {olive}%d Random Zombies {lightgreen}will be selected for the pullgame every %d seconds", THIS_MODE_INFO.tag, humansCount, zombiesCount, interval);
+		
+		CS_TerminateRound(3.0, CSRoundEnd_Draw);
 	}
 	else
 		PullGame_ToggleTimer(false);
@@ -295,7 +308,9 @@ void PullGame_PickTeamRandoms(int[] arr, int len, int min, int max)
 			
 			arr[index] = 0;
 			g_bPullGameHas[random] = true;
+			
 			CPrintToChat(random, "%s You have been selected to use pull! Press FlashLight button (F) Now!", THIS_MODE_INFO.tag);
+			SendHudText(random, "[FunModes-PullGame] You have been selected to use pull! Press FlashLight button (F) Now!");
 		}
 	}
 }
@@ -395,6 +410,7 @@ void PullGame_StartGrab(int client, int target)
 	
 	if (!g_bPullState[target])
 	{
+		g_bPullState[target] = true;
 		g_fPullOriginalSpeed[target] = GetEntPropFloat(target, Prop_Send, "m_flMaxspeed");
 		SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);
 	}
