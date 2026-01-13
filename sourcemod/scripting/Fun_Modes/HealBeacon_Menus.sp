@@ -51,7 +51,7 @@ public int MainMenu_Handler(Menu menu, MenuAction action, int param1, int param2
 		{
 			char buffer[64];
 			menu.GetItem(param2, buffer, sizeof(buffer));
-			if(StrEqual(buffer, "option2"))
+			if(strcmp(buffer, "option2") == 0)
 			{
 				HealBeacon_DisplaySettingsMenu(param1);
 				return 0;
@@ -59,7 +59,7 @@ public int MainMenu_Handler(Menu menu, MenuAction action, int param1, int param2
 
 			int userid = StringToInt(buffer);
 			int random = GetClientOfUserId(userid);
-			if (random)
+			if (!random)
 			{
 				CPrintToChat(param1, "%s %T", THIS_MODE_INFO.tag, "PlayerNotValid", param1);
 				return 0;
