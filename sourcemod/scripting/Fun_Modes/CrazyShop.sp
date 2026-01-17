@@ -67,16 +67,16 @@ static CrazyShop_Item g_CrazyShopItems[] =
 	
 	/* Humans Items (Team = 1) */
 	{
-		"More HP", 1, 10, 100.0, 0.0, DATATYPE_AMOUNT, "HP Amount to Add"
+		"More HP", 1, 5, 100.0, 0.0, DATATYPE_AMOUNT, "HP Amount to Add"
 	},
 	{
-		"Infect Protection", 1, 15, 0.0, 15.0, DATATYPE_TIME, ""
+		"Infect Protection", 1, 10, 0.0, 15.0, DATATYPE_TIME, ""
 	},
 	{
-		"Super Weapon", 1, 12, 2.5, 15.0, DATATYPE_BOTH, "Damage Scale"
+		"Super Weapon", 1, 30, 2.5, 15.0, DATATYPE_BOTH, "Damage Scale"
 	},
 	{
-		"Laser Protection", 1, 15, 0.0, 20.0, DATATYPE_TIME, ""
+		"Laser Protection", 1, 10, 0.0, 20.0, DATATYPE_TIME, ""
 	},
 	{
 		"Unlimited Ammo", 1, 10, 0.0, 15.0, DATATYPE_TIME, ""
@@ -85,7 +85,7 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Buy a smokegrenade", 1, 10, 0.0, 0.0, DATATYPE_NONE, ""
 	},
 	{
-		"Slow Beacon", 1, 30, -0.8, 15.0, DATATYPE_BOTH, "Speed Value (absolute)"
+		"Slow Beacon", 1, 30, 0.01, 15.0, DATATYPE_BOTH, "Speed Value (absolute)"
 	},
 	
 	/* Zombies Items (Team = 0) */
@@ -99,16 +99,16 @@ static CrazyShop_Item g_CrazyShopItems[] =
 		"Lower Gravity", 0, 10, -0.2, 15.0, DATATYPE_BOTH, "Gravity Value (-)"
 	},
 	{
-		"Hurting Machine", 0, 15, 20.0, 15.0, DATATYPE_BOTH, "Damage"
+		"Hurting Machine", 0, 20, 20.0, 15.0, DATATYPE_BOTH, "Damage"
 	},
 	{
 		"Ignite Immunity", 0, 10, 0.0, 20.0, DATATYPE_TIME, ""
 	},
 	{
-		"Invisibility", 0, 15, 0.0, 15.0, DATATYPE_TIME, ""
+		"Invisibility", 0, 30, 0.0, 15.0, DATATYPE_TIME, ""
 	},
 	{
-		"Human Pull", 0, 15, 0.0, 15.0, DATATYPE_TIME, ""
+		"Human Pull", 0, 30, 0.0, 15.0, DATATYPE_TIME, ""
 	}
 };
 
@@ -138,7 +138,6 @@ enum struct CrazyShop_PlayerData
 	float originalSpeed;
 	bool gotSlowed;
 	int grabbedTarget;
-	float grabbedDistance;
 	float originalTargetMaxSpeed;
 	float lastUse;
 	
@@ -168,7 +167,6 @@ enum struct CrazyShop_PlayerData
 		this.originalSpeed = 0.0;
 		this.gotSlowed = false;
 		this.grabbedTarget = -1;
-		this.grabbedDistance = -1.0;
 		this.lastUse = 0.0;
 	}
 }
@@ -214,7 +212,7 @@ stock void OnPluginStart_CrazyShop()
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DAMAGE,
-		"sm_crazyshop_damage", "200", "The needed damage for humans to be rewarded with credits",
+		"sm_crazyshop_damage", "5000", "The needed damage for humans to be rewarded with credits",
 		("200,500,1000,1500,2000"), "int"
 	);
 	
@@ -238,7 +236,7 @@ stock void OnPluginStart_CrazyShop()
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, CRAZYSHOP_CONVAR_DISABLE_SHOP,
-		"sm_crazyshop_disable_show", "0", "Enable/Disable the !crazyshop command",
+		"sm_crazyshop_disable_shop", "0", "Enable/Disable the !crazyshop command",
 		("0,1"), "bool"
 	);
 	
@@ -320,6 +318,8 @@ stock void ZR_OnClientInfected_CrazyShop(int client)
 
 stock void Event_RoundStart_CrazyShop()
 {
+	g_iCrazyShopProps = 0;
+	
 	for (int i = 1; i <= MaxClients; i++)
 		PLAYER_RESET_TEMP_VARS(i);
 }
@@ -390,6 +390,9 @@ stock void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
 	if (DAMAGE_DEALT(attacker) >= THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_DAMAGE].cvar.IntValue)
 	{
 		int credits = THIS_MODE_INFO.cvarInfo[CRAZYSHOP_CONVAR_CREDITS].cvar.IntValue;
+		if (credits <= 0)
+			return;
+			
 		CPrintToChat(attacker, "%s You have been given {olive}%d credits {lightgreen}for damaging the zombies!", THIS_MODE_INFO.tag, credits);
 		
 		PLAYER_CREDITS(attacker) += credits;
@@ -1542,11 +1545,9 @@ void CrazyShop_Activate(int client, int itemNum)
 				PLAYER_TEMP_VAR(client, originalWeapon)[0] = '\0';
 			else
 			{
-				int weapon = GivePlayerItem(client, PLAYER_TEMP_VAR(client, superWeaponName));
-				EquipPlayerWeapon(client, weapon);
-				
-				if (g_hSwitchSDKCall != null)
-					SDKCall(g_hSwitchSDKCall, client, weapon, 0);
+			#if defined _FM_GunGame
+				GunGame_EquipWeapon(client, PLAYER_TEMP_VAR(client, superWeaponName), true);
+			#endif
 			}
 			
 			FunModes_HookEvent(g_bEvent_WeaponFire, "weapon_fire", Event_WeaponFire_CrazyShop);
@@ -1596,6 +1597,8 @@ void CrazyShop_Activate(int client, int itemNum)
 		// Buy a smokegrenade
 		case 5:
 		{
+			GiveGrenadesToClient(client, GrenadeType_Smokegrenade, 1);
+			
 			int wp = GivePlayerItem(client, "weapon_smokegrenade");
 			EquipPlayerWeapon(client, wp);
 			
@@ -1804,17 +1807,9 @@ Action Timer_CrazyShop_SuperWeapon(Handle timer, DataPack pack)
 	
 	if (IsPlayerAlive(client) && ZR_IsClientHuman(client) && PLAYER_TEMP_VAR(client, originalWeapon)[0])
 	{
-		int current = GetPlayerWeaponSlot(client, CS_SLOT_PRIMARY);
-		if (current != -1)
-		{
-			SDKHooks_DropWeapon(client, current);
-			RemoveEntity(current);
-		}
-		
-		int wp = GivePlayerItem(client, PLAYER_TEMP_VAR(client, originalWeapon));
-		EquipPlayerWeapon(client, wp);
-		if (g_hSwitchSDKCall != null)
-			SDKCall(g_hSwitchSDKCall, client, wp, 0);
+	#if defined _FM_GunGame
+		GunGame_EquipWeapon(client, PLAYER_TEMP_VAR(client, originalWeapon), true);
+	#endif
 			
 		PLAYER_TEMP_VAR(client, originalWeapon)[0] = '\0';
 	}
@@ -2104,9 +2099,6 @@ void CrazyShop_StartGrab(int client, int target)
 	PLAYER_TEMP_VAR(target, infectionProtect) = true;
 	
 	PLAYER_TEMP_VAR(client, grabbedTarget) = target;
-	
-	// we dont care about optimization here as this is called once only
-	PLAYER_TEMP_VAR(client, grabbedDistance) = GetDistanceBetween(client, target, false);
 	
 	PLAYER_TEMP_VAR(client, originalTargetMaxSpeed) = GetEntPropFloat(target, Prop_Send, "m_flMaxspeed");
 	SetEntPropFloat(target, Prop_Send, "m_flMaxspeed", 0.01);

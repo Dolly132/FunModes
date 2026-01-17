@@ -22,6 +22,8 @@
 #tryinclude <EntWatch>
 #define REQUIRE_PLUGIN
 
+#define _FM_GunGame
+
 ModeInfo g_GunGameInfo;
 
 #undef THIS_MODE_INFO
@@ -88,34 +90,36 @@ stock void OnPluginStart_GunGame()
 	RegAdminCmd("sm_fm_gungame", Cmd_GunGameToggle, ADMFLAG_CONVARS, "Turn GunGame Mode On/Off");
 	RegAdminCmd("sm_gungame_settings", Cmd_GunGameSettings, ADMFLAG_CONVARS, "Open GunGame Sttings Menu");
 	
+	RegConsoleCmd("sm_gungame", Cmd_GunGame, "Get your original weapons");
+
 	/* CONVARS */
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_PISTOLS_DAMAGE,
-		"sm_gungame_pistols_damage", "100", "The required damage needed for pistols to upgrade",
+		"sm_gungame_pistols_damage", "1200", "The required damage needed for pistols to upgrade",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_SHOTGUNS_DAMAGE,
-		"sm_gungame_shotguns_damage", "1000", "The required damage needed for shotguns to upgrade",
+		"sm_gungame_shotguns_damage", "2200", "The required damage needed for shotguns to upgrade",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_SMGS_DAMAGE,
-		"sm_gungame_smgs_damage", "1200", "The required damage needed for smgs to upgrade",
+		"sm_gungame_smgs_damage", "4200", "The required damage needed for smgs to upgrade",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_RIFLES_DAMAGE,
-		"sm_gungame_rifles_damage", "1500", "The required damage needed for rifles to upgrade",
+		"sm_gungame_rifles_damage", "3800", "The required damage needed for rifles to upgrade",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
 	DECLARE_FM_CVAR(
 		THIS_MODE_INFO.cvarInfo, GUNGAME_CONVAR_M249_DAMAGE,
-		"sm_gungame_m249_damage", "2000", "The required damage needed for m249 to finish the gungame cycle",
+		"sm_gungame_m249_damage", "8000", "The required damage needed for m249 to finish the gungame cycle",
 		("800,1000,1500,2000,2500"), "int"
 	);
 	
@@ -177,6 +181,7 @@ stock void OnClientPutInServer_GunGame(int client)
 	if (!THIS_MODE_INFO.isOn)
 		return;
 	
+	g_GunGameData[client].allowEquip = true;
 	g_GunGameData[client].ResetLevel();
 	
 	if (!g_bSDKHook_WeaponEquip[client])
@@ -203,7 +208,12 @@ stock void ZR_OnClientInfected_GunGame(int client)
 }
 
 stock void Event_RoundStart_GunGame() {}
-stock void Event_RoundEnd_GunGame() {}
+stock void Event_RoundEnd_GunGame()
+{
+	for (int i = 1; i <= MaxClients; i++)
+		g_GunGameData[i].allowEquip = true;
+}
+
 stock void Event_PlayerSpawn_GunGame(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
@@ -268,15 +278,14 @@ stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 	
 	if (!IsPlayerAlive(client) || ZR_IsClientZombie(client))
 		return;
-		
+	
 	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
 	{
 	#if !defined _EntWatch_include
 		THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue = false;
-		OnWeaponEquip_GunGame(client, weapon, result);
 		return;
 	#else
-		if (!EntWatch_IsSpecialItem(weapon))
+		if (EntWatch_IsSpecialItem(weapon))
 			return;
 	#endif
 	}
@@ -423,6 +432,48 @@ int Menu_GunGameSettings(Menu menu, MenuAction action, int param1, int param2)
 	return 0;
 }
 
+Action Cmd_GunGame(int client, int args)
+{
+	if (!client)
+		return Plugin_Handled;
+		
+	if (!THIS_MODE_INFO.isOn)
+	{
+		CReplyToCommand(client, "%s GunGame is currently Off!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+	
+	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+	{
+		CReplyToCommand(client, "%s You have to be an alive human to use this command!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+	
+	if (THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_ENTWATCH].cvar.BoolValue)
+	{
+	#if defined _EntWatch_include
+		if (EntWatch_HasSpecialItem(client))
+		{
+			static const char weapons[][] =  { "weapon_p90", "weapon_tmp", "weapon_ak47", "weapon_m4a1" };
+			GunGame_EquipWeapon(client, weapons[GetRandomInt(0, sizeof(weapons)-1)], true);
+			return Plugin_Handled;
+		}
+	#endif
+	}
+	
+	int weaponType = g_GunGameData[client].level[0];
+	int weaponIndex = g_GunGameData[client].level[1];
+	if (weaponType > 0)
+	{
+		if (GetPlayerWeaponSlot(client, CS_SLOT_SECONDARY) == -1)
+			GunGame_EquipWeapon(client, g_GunGameWeaponsList[0][0], true);
+	}
+	
+	GunGame_EquipWeapon(client, g_GunGameWeaponsList[weaponType][weaponIndex], true);
+	
+	return Plugin_Handled;
+}
+
 void GunGame_GiveWeapon(int client)
 {
 	int weaponType = g_GunGameData[client].level[0];
@@ -497,7 +548,7 @@ void GunGame_StripPlayer(int client, bool keepSecondary = false, bool giveSecond
 {
 	for (int i = 0; i <= 5; i++)
 	{
-		if (i == CS_SLOT_KNIFE)
+		if (i == CS_SLOT_KNIFE || i == CS_SLOT_GRENADE)
 			continue;
 			
 		if (keepSecondary && i == CS_SLOT_SECONDARY)
@@ -556,6 +607,12 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 {
 	g_GunGameData[client].reward = reward;
 	
+	/* Delete Timer */
+	delete g_GunGameData[client].rewardTimer;
+			
+	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+		return;
+		
 	switch (reward)
 	{
 		case REWARD_SPEED:
@@ -596,9 +653,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 		
 		case REWARD_HEGRENADES:
 		{
-			/* Delete Timer */
-			delete g_GunGameData[client].rewardTimer;
-			
+			if (!ZR_IsClientHuman(client))
+				return;
+				
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
 			{
@@ -623,10 +680,7 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 		}
 		
 		default:
-		{
-			/* Delete Timer */
-			delete g_GunGameData[client].rewardTimer;
-			
+		{	
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
 			{

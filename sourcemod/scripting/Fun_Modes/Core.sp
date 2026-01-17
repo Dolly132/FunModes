@@ -147,7 +147,8 @@ enum WeaponAmmoGrenadeType
 		CALL_MODE_FUNC_PARAM(%1, BlindMode, %2); \
 		CALL_MODE_FUNC_PARAM(%1, GunGame, %2); \
 		CALL_MODE_FUNC_PARAM(%1, CrazyShop, %2); \
-		CALL_MODE_FUNC_PARAM(%1, RealityShift, %2)
+		CALL_MODE_FUNC_PARAM(%1, RealityShift, %2); \
+		CALL_MODE_FUNC_PARAM(%1, PullGame, %2)
 
 /*
 these commented macros are not used for now

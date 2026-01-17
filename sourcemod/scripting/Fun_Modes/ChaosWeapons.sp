@@ -46,8 +46,8 @@ stock void OnPluginStart_ChaosWeapons()
 	
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
-	RegAdminCmd("sm_fm_ChaosWeapons", Cmd_ChaosWeaponsToggle, ADMFLAG_CONVARS, "Turn ChaosWeapons Mode On/Off");
-	RegAdminCmd("sm_ChaosWeapons_settings", Cmd_ChaosWeaponsSettings, ADMFLAG_CONVARS, "Open ChaosWeapons Sttings Menu");
+	RegAdminCmd("sm_fm_chaosweapons", Cmd_ChaosWeaponsToggle, ADMFLAG_CONVARS, "Turn ChaosWeapons Mode On/Off");
+	RegAdminCmd("sm_chaosweapons_settings", Cmd_ChaosWeaponsSettings, ADMFLAG_CONVARS, "Open ChaosWeapons Sttings Menu");
 	
 	/* CONVARS */
 	DECLARE_FM_CVAR(
@@ -244,7 +244,6 @@ void SetAllWeaponsKnockback(float kb = 0.0, int index = -1, bool firstTime = fal
 		
 		if (turnOff || (index >= 0 && i == index))
 		{
-			PrintToChatAll("Weapon: %s - Original Kb: %f", lower, g_fOriginalWeaponsKB[i]);
 			ZR_SetWeaponKnockback(lower, g_fOriginalWeaponsKB[i]);
 			continue;
 		}

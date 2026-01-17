@@ -231,6 +231,7 @@ int Menu_PullGameSettings(Menu menu, MenuAction action, int param1, int param2)
 
 void PullGame_ResetVariablesClient(int client)
 {
+	g_bPullGameHas[client] = false;
 	g_bPullState[client] = false;
 	g_fPullOriginalSpeed[client] = 0.0;
 	g_fPullOriginalDistance[client] = 0.0;
@@ -352,7 +353,7 @@ stock void OnPlayerRunCmdPost_PullGame(int client, int buttons, int impulse)
 	if (impulse == 100)
 	{
 		Cmd_Pull(client);
-		g_fPullLastUseTime[client] = GetGameTime() + 2;
+		g_fPullLastUseTime[client] = GetGameTime() + 2.0;
 	}
 }
 
