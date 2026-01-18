@@ -245,7 +245,10 @@ stock void Event_PlayerTeam_GunGame(Event event)
 
 stock void Event_PlayerDeath_GunGame(int client)
 {
-	#pragma unused client
+	if (!THIS_MODE_INFO.isOn)
+		return;
+	
+	GunGame_GiveReward(client, REWARD_NONE);
 }
 
 stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
@@ -342,6 +345,7 @@ public Action Cmd_GunGameToggle(int client, int args)
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
 		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 		FunModes_HookEvent(g_bEvent_PlayerSpawn, "player_spawn", Event_PlayerSpawn);
+		FunModes_HookEvent(g_bEvent_PlayerDeath, "player_death", Event_PlayerDeath);
 		
 		for (int i = 1; i <= MaxClients; i++)
 		{
@@ -610,9 +614,6 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 	/* Delete Timer */
 	delete g_GunGameData[client].rewardTimer;
 			
-	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
-		return;
-		
 	switch (reward)
 	{
 		case REWARD_SPEED:
@@ -624,6 +625,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 				g_GunGameData[client].originalGravity = 0.0;
 			}
 			
+			if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+				return;
+				
 			g_GunGameData[client].originalSpeed = GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue");
 			SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_GunGameData[client].originalSpeed + 0.3);
 			
@@ -642,6 +646,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 				g_GunGameData[client].originalSpeed = 0.0;
 			}
 			
+			if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+				return;
+				
 			g_GunGameData[client].originalGravity = GetEntityGravity(client);
 			SetEntityGravity(client, 0.5);
 			
@@ -653,9 +660,6 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 		
 		case REWARD_HEGRENADES:
 		{
-			if (!ZR_IsClientHuman(client))
-				return;
-				
 			/* Reset Gravity */
 			if (g_GunGameData[client].originalGravity != 0.0)
 			{
@@ -670,6 +674,9 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
 				g_GunGameData[client].originalSpeed = 0.0;
 			}
 			
+			if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
+				return;
+				
 			g_GunGameData[client].allowEquip = true;
 			GivePlayerItem(client, "weapon_hegrenade");
 			int count = THIS_MODE_INFO.cvarInfo[GUNGAME_CONVAR_HEGRENADES_COUNT].cvar.IntValue;
