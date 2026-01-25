@@ -1,67 +1,150 @@
+/*
+    (). FunModes V2:
+        
+    @file           DoubleJump.sp
+    @Usage          Functions for the DoubleJump mode.
+*/
+
 #pragma semicolon 1
 #pragma newdecls required
 
-#include <sdktools_functions>
+ModeInfo g_DoubleJumpInfo;
 
-ConVarInfo g_cvInfoDoubleJump[4] = 
-{
-	{null, "150.0,260.0,300.0,320.0", "float"},
-	{null, "1,2,3,4,5", "int"},
-	{null, "0,1", "bool"},
-	{null, "0,1", "bool"}
-};
+#undef THIS_MODE_INFO
+#define THIS_MODE_INFO g_DoubleJumpInfo
+
+#define DOUBLEJUMP_CONVAR_BOOST		0
+#define DOUBLEJUMP_CONVAR_MAX_JUMPS	1
+#define DOUBLEJUMP_CONVAR_HUMANS	2
+#define DOUBLEJUMP_CONVAR_ZOMBIES	3
+#define DOUBLEJUMP_CONVAR_TOGGLE	4
 
 /* CALLED on Plugin Start */
-stock void PluginStart_DoubleJump()
+stock void OnPluginStart_DoubleJump()
 {
+	THIS_MODE_INFO.name = "DoubleJump";
+	THIS_MODE_INFO.tag = "{gold}[FunModes-DoubleJump]{lightgreen}";
+
 	/* ADMIN COMMANDS */
-	RegAdminCmd("sm_fm_doublejump", Cmd_DoubleJump, ADMFLAG_CONVARS, "Enable/Disable Double Jump mode.");
+	RegAdminCmd("sm_fm_doublejump", Cmd_DoubleJumpToggle, ADMFLAG_CONVARS, "Enable/Disable Double Jump mode.");
 
-	/* CONVARS HANDLES */
-	g_cvDoubleJumpBoost			= CreateConVar("sm_doublejump_boost", "260", "The amount of vertical boost to apply to double jumps.", _, true, 260.0, true, 4095.0);
-	g_cvDoubleJumpMaxJumps		= CreateConVar("sm_doublejump_max_jumps", "1", "How many re-jumps the player can do while he is in the air.");
-	g_cvDoubleJumpHumansEnable 	= CreateConVar("sm_doublejump_humans", "1", "Enable/Disable Double jump for humans.");
-	g_cvDoubleJumpZombiesEnable = CreateConVar("sm_doublejump_zombies", "0", "Enable/Disable Double jump for Zombies.");
+	/* CONVARS */
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DOUBLEJUMP_CONVAR_BOOST,
+		"sm_doublejump_boost", "260.0", "The amount of vertical boost to apply to double jumps.",
+		("150.0,260.0,300.0,320.0"), "float"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DOUBLEJUMP_CONVAR_MAX_JUMPS,
+		"sm_doublejump_max_jumps", "1", "How many re-jumps the player can do while he is in the air.",
+		("1,2,3,4,5"), "int"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DOUBLEJUMP_CONVAR_HUMANS,
+		"sm_doublejump_humans", "1", "Enable/Disable Double jump for humans.",
+		("0,1"), "bool"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DOUBLEJUMP_CONVAR_ZOMBIES,
+		"sm_doublejump_zombies", "0", "Enable/Disable Double jump zombies.",
+		("0,1"), "bool"
+	);
+
+	DECLARE_FM_CVAR(
+		THIS_MODE_INFO.cvarInfo, DOUBLEJUMP_CONVAR_TOGGLE,
+		"sm_doublejump_enable", "1", "Enable/Disable Double Jump mode",
+		("0,1"), "bool"
+	);
+
+	THIS_MODE_INFO.enableIndex = DOUBLEJUMP_CONVAR_TOGGLE;
 	
-	DoubleJump_SetCvarsInfo();
+	THIS_MODE_INFO.index = g_iLastModeIndex++;
+	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
+
+	THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_TOGGLE].cvar.AddChangeHook(OnDoubleJumpModeToggle);
 }
 
-void DoubleJump_SetCvarsInfo() 
+void OnDoubleJumpModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
 {
-	ConVar cvars[sizeof(g_cvInfoDoubleJump)];
-	cvars[0] = g_cvDoubleJumpBoost;
-	cvars[1] = g_cvDoubleJumpMaxJumps;
-	cvars[2] = g_cvDoubleJumpHumansEnable;
-	cvars[3] = g_cvDoubleJumpZombiesEnable;
-	
-	for (int i = 0; i < sizeof(g_cvInfoDoubleJump); i++)
-		g_cvInfoDoubleJump[i].cvar = cvars[i];
+	if (THIS_MODE_INFO.isOn)
+		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
 }
 
-Action Cmd_DoubleJump(int client, int args)
+stock void OnMapStart_DoubleJump() {}
+stock void OnMapEnd_DoubleJump()
 {
-	g_bIsDoubleJumpOn = !g_bIsDoubleJumpOn;
-	CPrintToChatAll("%s Double Jump is now {olive}%s. %s", DoubleJump_Tag, (g_bIsDoubleJumpOn) ? "Enabled" : "Disabled",
-													(g_bIsDoubleJumpOn) ? "You can re-jump while you are in the air." : "");
+	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
+}
 
-	if(g_bIsDoubleJumpOn)
+stock void OnClientPutInServer_DoubleJump(int client)
+{
+	#pragma unused client
+}
+
+stock void OnClientDisconnect_DoubleJump(int client)
+{
+	#pragma unused client
+}
+
+stock void ZR_OnClientInfected_DoubleJump(int client)
+{
+	#pragma unused client
+}
+
+stock void Event_RoundStart_DoubleJump() {}
+stock void Event_RoundEnd_DoubleJump() {}
+stock void Event_PlayerSpawn_DoubleJump(int client)
+{
+	#pragma unused client
+}
+
+stock void Event_PlayerTeam_DoubleJump(Event event)
+{
+	#pragma unused event
+}
+
+stock void Event_PlayerDeath_DoubleJump(int client)
+{
+	#pragma unused client
+}
+
+public Action Cmd_DoubleJumpToggle(int client, int args)
+{
+	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
+	{
+		CReplyToCommand(client, "%s Double Jump mode is currently disabled!", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
+	}
+
+	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
+
+	CPrintToChatAll("%s Double Jump is now {olive}%s. %s", THIS_MODE_INFO.tag, (THIS_MODE_INFO.isOn) ? "Enabled" : "Disabled",
+													(THIS_MODE_INFO.isOn) ? "You can re-jump while you are in the air." : "");
+
+	if(THIS_MODE_INFO.isOn)
 	{
 		CPrintToChatAll("%s Humans Double Jump: {olive}%s\n%s Zombies Double Jump: {olive}%s.", 
-						DoubleJump_Tag, (g_cvDoubleJumpHumansEnable.BoolValue) ? "Enabled" : "Disabled",
-						DoubleJump_Tag, (g_cvDoubleJumpZombiesEnable.BoolValue) ? "Enabled" : "Disabled");
+						THIS_MODE_INFO.tag, (THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_HUMANS].cvar.BoolValue) ? "Enabled" : "Disabled",
+						THIS_MODE_INFO.tag, (THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_ZOMBIES].cvar.BoolValue) ? "Enabled" : "Disabled");
 	}
 			
 	return Plugin_Handled;
 }
 
 /* SM DOUBLEJUMP 1.1.0, ALL CREDITS GO TO - https://forums.alliedmods.net/showpost.php?p=2759524&postcount=37 */
-public Action OnPlayerRunCmd(int client, int& buttons)
+void OnPlayerRunCmdPost_DoubleJump(int client, int buttons, int impulse)
 {
-	if(!g_bIsDoubleJumpOn || !IsClientInGame(client) || !IsPlayerAlive(client))
-		return Plugin_Continue;
+	#pragma unused buttons
+	#pragma unused impulse
+	
+	if(!THIS_MODE_INFO.isOn || !IsClientInGame(client) || !IsPlayerAlive(client))
+		return;
 
-	if((!g_cvDoubleJumpHumansEnable.BoolValue && GetClientTeam(client) == CS_TEAM_CT) || (!g_cvDoubleJumpZombiesEnable.BoolValue && GetClientTeam(client) == CS_TEAM_T))
-		return Plugin_Continue;
+	if((!THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_HUMANS].cvar.BoolValue && GetClientTeam(client) == CS_TEAM_CT) || (!THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_ZOMBIES].cvar.BoolValue && GetClientTeam(client) == CS_TEAM_T))
+		return;
 
 	static bool inGround;
 	static bool inJump;
@@ -73,12 +156,12 @@ public Action OnPlayerRunCmd(int client, int& buttons)
 
 	if(!landed[client])
 	{
-		if(g_cvDoubleJumpMaxJumps.IntValue)
+		if(THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_MAX_JUMPS].cvar.IntValue)
 		{
 			static int jumps[MAXPLAYERS+1];
 			if(inGround)
 				jumps[client] = 0;
-			else if(!wasJump[client] && inJump && jumps[client]++ <= g_cvDoubleJumpMaxJumps.IntValue)
+			else if(!wasJump[client] && inJump && jumps[client]++ <= THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_MAX_JUMPS].cvar.IntValue)
 				ApplyNewJump(client);
 		}
 		else if(!inGround && !wasJump[client] && inJump)
@@ -90,14 +173,49 @@ public Action OnPlayerRunCmd(int client, int& buttons)
 	landed[client]	= inGround;
 	wasJump[client]	= inJump;
 
-	return Plugin_Continue;
+	return;
 }
 
 stock void ApplyNewJump(int client)
 {
 	static float vel[3];
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", vel);
-	vel[2] = g_cvDoubleJumpBoost.FloatValue;
+	vel[2] = THIS_MODE_INFO.cvarInfo[DOUBLEJUMP_CONVAR_BOOST].cvar.FloatValue;
 
 	TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
+}
+
+/* DoubleJump Settings */
+public void Cmd_DoubleJumpSettings(int client)
+{
+	Menu menu = new Menu(Menu_DoubleJumpSettings);
+
+	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
+
+	menu.AddItem(NULL_STRING, "Show Cvars\n");
+
+	menu.ExitBackButton = true;
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+int Menu_DoubleJumpSettings(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action)
+	{
+		case MenuAction_End:
+			delete menu;
+		
+		case MenuAction_Cancel:
+		{
+			if (param2 == MenuCancel_ExitBack)
+				DisplayModeInfo(param1, g_iPreviousModeIndex[param1]);
+		}
+
+		case MenuAction_Select:
+		{
+			ShowCvarsInfo(param1, THIS_MODE_INFO);
+		}
+	}
+
+	return 0;
 }
