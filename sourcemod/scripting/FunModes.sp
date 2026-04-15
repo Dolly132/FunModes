@@ -47,12 +47,6 @@ public void OnPluginStart()
 
 	AutoExecConfig();
 
-	for(int i = 1; i <= MaxClients; i++)
-	{
-		if (IsClientConnected(i))
-			OnClientPutInServer(i);
-	}
-	
 	static const char commands[][] = { "sm_fm_cvars", "sm_funmodes", "sm_funmode" };
 	for(int i = 0; i < sizeof(commands); i++)
 	{
@@ -506,7 +500,7 @@ int Menu_ShowCvarInfo(Menu menu, MenuAction action, int param1, int param2)
 			FUNMODES_CVAR_SET_VALUE(cvar, String, dataEx[2]);
 
 			// Just to avoid some random sourcemod bug...
-			g_ModesInfo[modeIndex].cvars[cvarIndex] = cvar;
+			strcopy(g_ModesInfo[modeIndex].cvars[cvarIndex].currentValue, sizeof(FM_ConVar::currentValue), dataEx[2]);
 
 			CPrintToChat(param1, "{gold}[FunModes]{lightgreen} You have changed {olive}%s {lightgreen}value to {olive}%s.", cvar.name, dataEx[2]);
 
@@ -569,7 +563,7 @@ Action Cmd_FunModesCvars(int client, int args)
 
 	if (args < 2)
 	{
-		CReplyToCommand(client, "{gold}[FunModes]{lightgreen} %s value is: {olive}%s", cvar.name, FUNMODES_CVAR_GET_VALUE(cvar, String));
+		CReplyToCommand(client, "{gold}[FunModes]{lightgreen} %s value is: {olive}%s", cvar.name, cvar.currentValue);
 		return Plugin_Handled;
 	}
 
@@ -577,9 +571,11 @@ Action Cmd_FunModesCvars(int client, int args)
 	GetCmdArg(2, newValue, sizeof(newValue));
 
 	FUNMODES_CVAR_SET_VALUE(cvar, String, newValue);
-	g_ModesInfo[cvar.modeIndex].cvars[cvar.cvarIndex] = cvar;
+	int cvarIndex = cvar.cvarIndex;
+	int modeIndex = cvar.modeIndex;
 
-	CReplyToCommand(client, "{gold}[FunModes]{lightgreen} changed %s value to: {olive}%s", cvar.name, newValue);
+	g_ModesInfo[modeIndex].cvars[cvarIndex] = cvar;
+	CReplyToCommand(client, "{gold}[FunModes]{lightgreen} changed %s value to: {olive}%s", cvar.name, cvar.currentValue);
 
 	return Plugin_Handled;
 }
@@ -632,6 +628,24 @@ stock void SendHudText(int client, const char[] message, bool isFar = false, int
 	ShowSyncHudText(client, g_hHudMsg, "%s", message);
 }
 
+stock bool HasPlayerItem(int client, const char[] weapon)
+{
+	int max = GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons");
+	for (int i = 0; i < max; i++)
+	{
+		int ent = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", i);
+		if (ent == -1 || !IsValidEntity(ent))
+			continue;
+
+		char className[32];
+		GetEntityClassname(ent, className, sizeof(className));
+		if (strcmp(className, weapon, false) == 0)
+			return true;
+	}
+
+	return false;
+}
+
 public void OnConfigsExecuted()
 {
 	delete g_hKV;
@@ -652,6 +666,7 @@ public void OnConfigsExecuted()
 	int modeIndex = 0;
 	int cvarIndex = 0;
 	int maxCvars = g_ModesInfo[modeIndex].GetCvarsCount();
+	int count = 0;
 	do
 	{
 		FM_ConVar cvar;
@@ -686,10 +701,15 @@ public void OnConfigsExecuted()
 
 		g_ModesInfo[modeIndex].cvars[cvarIndex] = cvar;
 
-		if (++cvarIndex >= maxCvars || ++modeIndex >= g_iLastModeIndex)
-			break;
+		if (++cvarIndex >= maxCvars)
+		{
+			if (++modeIndex >= g_iLastModeIndex)
+				break;
 
-		maxCvars = g_ModesInfo[modeIndex].GetCvarsCount();
+			cvarIndex = 0;
+			maxCvars = g_ModesInfo[modeIndex].GetCvarsCount();
+		}
+		count++;
 	} while (g_hKV.GotoNextKey());
 
 	g_hKV.Rewind();

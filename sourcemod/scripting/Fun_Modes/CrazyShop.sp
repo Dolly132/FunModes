@@ -1637,10 +1637,16 @@ void CrazyShop_Activate(int client, int itemNum)
 		// Buy a smokegrenade
 		case 5:
 		{
-			SET_GRENADES_COUNT(client, SMOKEGRENADE, GET_GRENADES_COUNT(client, SMOKEGRENADE) + 1);
+			bool given = false;
+			if (!HasPlayerItem(client, "weapon_smokegrenade"))
+			{
+				int wp = GivePlayerItem(client, "weapon_smokegrenade");
+				EquipPlayerWeapon(client, wp);
+				given = true;
+			}
 
-			int wp = GivePlayerItem(client, "weapon_smokegrenade");
-			EquipPlayerWeapon(client, wp);
+			int extra = given ? 0 : 1;
+			SET_GRENADES_COUNT(client, SMOKEGRENADE, GET_GRENADES_COUNT(client, SMOKEGRENADE) + extra);
 
 			CPrintToChat(client, "%s You have given yourself a smokegrenade! {olive}Freeze the zombies now!", THIS_MODE_INFO.tag);
 		}

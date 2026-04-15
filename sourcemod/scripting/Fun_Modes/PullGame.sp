@@ -125,6 +125,7 @@ void PullGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue
 		case PULLGAME_CONVAR_TOGGLE:
 		{
 			bool val = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
+			PrintToChatAll("New value for pullgame enable: %d", val);
 			if (THIS_MODE_INFO.isOn)
 				CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, val, THIS_MODE_INFO.index);
 

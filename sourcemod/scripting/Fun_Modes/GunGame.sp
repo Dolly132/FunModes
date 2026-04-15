@@ -174,7 +174,6 @@ void GunGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue,
         case GUNGAME_CONVAR_PISTOLS_DAMAGE:
         {
             g_iGunGame_DamageRequired[0] = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Int);
-            PrintToChatAll("New value for pistols damage: %d", g_iGunGame_DamageRequired[0]);
 		}
 
         case GUNGAME_CONVAR_SHOTGUNS_DAMAGE:
@@ -630,7 +629,7 @@ void GunGame_ShowRewardsMenu(int client)
     menu.SetTitle("[GunGame Escape] You have completed a gungame cycle! Choose your reward!\nYou only have 60s to switch your rewards");
 
     menu.AddItem("0", "More Speed", g_GunGameData[client].reward == REWARD_SPEED ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT);
-    menu.AddItem("2", "Smokegrenades (Freeze)", g_GunGameData[client].reward == REWARD_SMOKEGRENADES ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT);
+    menu.AddItem("1", "Smokegrenades (Freeze)", g_GunGameData[client].reward == REWARD_SMOKEGRENADES ? ITEMDRAW_DISABLED : ITEMDRAW_DEFAULT);
 
     menu.ExitBackButton = true;
     menu.Display(client, 60);
@@ -695,11 +694,14 @@ void GunGame_GiveReward(int client, GunGame_Reward reward)
             if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
                 return;
 
-            int smoke = GivePlayerItem(client, "weapon_smokegrenade");
-            EquipPlayerWeapon(client, smoke);
+			if (!HasPlayerItem(client, "weapon_smokegrenade"))
+			{
+            	int wp = GivePlayerItem(client, "weapon_smokegrenade");
+            	EquipPlayerWeapon(client, wp);
+            }
 
             int count = g_iGunGame_SmokeGrenadesCount;
-            SET_GRENADES_COUNT(client, SMOKEGRENADE, GET_GRENADES_COUNT(client, SMOKEGRENADE) + count - 1);
+            SET_GRENADES_COUNT(client, SMOKEGRENADE, GET_GRENADES_COUNT(client, SMOKEGRENADE) + count);
 
             CPrintToChat(client, "%s You have been granted {olive}%d extra SMOKEGRENADES {lightgreen}for finishing a gungame cycle!", THIS_MODE_INFO.tag, count);
         }

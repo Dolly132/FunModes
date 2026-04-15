@@ -153,8 +153,6 @@ enum struct FM_ConVar
 		pack.WriteString(this.currentValue);
 
 		RequestFrame(FunModes_CallCvarChange, pack);
-
-		PrintToChatAll("Called OnConVarChange for %s, new value: %s", this.name, this.currentValue);
 	}
 
 	int GetPos()
@@ -316,9 +314,9 @@ enum WeaponAmmoGrenadeType
 * @param %3		The new value to assign to the variable.
 * @param %4		The mode's index.
 */
-#define CHANGE_MODE_INFO(%1,%2,%3,%4) \ 
+#define CHANGE_MODE_INFO(%1,%2,%3,%4) \
 		%1.%2 = %3; \
-		g_ModesInfo[%4] = %1
+		g_ModesInfo[%4].%2 = %3
 
 /*
 * Retrieves a cvar's value. (Using the cvar's enum struct)

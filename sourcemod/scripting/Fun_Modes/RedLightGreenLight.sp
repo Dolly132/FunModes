@@ -177,7 +177,7 @@ void RLGL_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, co
 stock void OnMapStart_RLGL()
 {
 	countDownPath = _FUNMODES_CVAR_GET_VALUE(THIS_MODE_INFO.index, RLGL_CONVAR_COUNTDOWN_FOLDER, String);
-
+	PrintToChatAll("countdown path: %s", countDownPath);
 	for (int i = 1; i <= RoundToNearest(g_fRLGL_WarningTime); i++)
 	{
 		char sndPath[PLATFORM_MAX_PATH];

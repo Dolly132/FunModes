@@ -86,6 +86,10 @@ void DamageGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldVal
 		case DAMAGEGAME_CONVAR_TIME_INTERVAL:
 		{
 			g_fDamageGame_TimeInterval = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Float);
+
+			if (!THIS_MODE_INFO.isOn)
+				return;
+
 			DamageGame_StartTimers();
 		}
 
@@ -97,6 +101,9 @@ void DamageGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldVal
 		case DAMAGEGAME_CONVAR_MODE:
 		{
 			g_iDamageGame_Mode = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Int);
+
+			if (!THIS_MODE_INFO.isOn)
+				return;
 
 			for (int i = 1; i <= MaxClients; i++)
 				g_iDealtDamage[i] = -1;

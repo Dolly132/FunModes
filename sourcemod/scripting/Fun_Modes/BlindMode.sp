@@ -207,7 +207,7 @@ public Action Cmd_BlindModeToggle(int client, int args)
 		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 
 		CPrintToChatAll("%s Zombies will get a {olive}flashbang {lightgreen}that can blind humans.", THIS_MODE_INFO.tag);
-		CPrintToChatAll("%s %d%% of the zombies team will get the {olive}flashbang {lightgreen}every %.2f seconds", THIS_MODE_INFO.tag,
+		CPrintToChatAll("%s %.0f%% of the zombies team will get the {olive}flashbang {lightgreen}every %.2f seconds", THIS_MODE_INFO.tag,
 																	g_fBlindMode_Percentage,
 																	g_fBlindMode_TimerInterval
 		);
@@ -331,9 +331,16 @@ Action Timer_BlindMode(Handle timer)
 			zombie = zombies[GetRandomInt(0, zombiesCount - 1)];
 
 		g_bHasFlash[zombie] = true;
-		
-		int entity = GivePlayerItem(zombie, "weapon_flashbang");
-		EquipPlayerWeapon(zombie, entity);
+
+		if (!HasPlayerItem(zombie, "weapon_flashbang"))
+		{
+			int entity = GivePlayerItem(zombie, "weapon_flashbang");
+			EquipPlayerWeapon(zombie, entity);
+		}
+		else
+		{
+			SET_GRENADES_COUNT(zombie, FLASHBANG, GET_GRENADES_COUNT(zombie, FLASHBANG) + 1);
+		}
 
 		CPrintToChat(zombie, "%s You have been granted a FlashBang!!!\nBlind some humans.", THIS_MODE_INFO.tag);
 		enough++;
