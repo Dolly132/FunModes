@@ -1,9 +1,8 @@
 /*
     (). FunModes V2:
-        
+
     @file           Sample.sp
-    @Usage         	Functions for the Sample Mode.
-    				
+    @Usage          Functions for the Sample Mode.
 */
 
 #pragma semicolon 1
@@ -16,35 +15,52 @@ ModeInfo g_SampleInfo;
 
 #define SAMPLE_CONVAR_TOGGLE 0
 
+bool g_bSample_Enabled;
+
 stock void OnPluginStart_Sample()
 {
 	THIS_MODE_INFO.name = "Sample";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-Sample]{lightgreen}";
-	
+
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
 	RegAdminCmd("sm_fm_sample", Cmd_SampleToggle, ADMFLAG_CONVARS, "Turn Sample Mode On/Off");
 	RegAdminCmd("sm_sample_settings", Cmd_SampleSettings, ADMFLAG_CONVARS, "Open Sample Sttings Menu");
-	
+
 	/* CONVARS */
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, SAMPLE_CONVAR_TOGGLE,
-		"sm_sample_enable", "1", "Enable/Disable Sample Mode (This differs from turning it on/off)",
-		("0,1"), "bool"
+		SAMPLE_CONVAR_TOGGLE, "sm_sample_enable",
+		"1", "Enable/Disable Sample Mode (This differs from turning it on/off)",
+		("0,1"), CONVAR_BOOL
 	);
-	
+
+	THIS_MODE_INFO.cvars[SAMPLE_CONVAR_TOGGLE].HookChange(Sample_OnConVarChange);
+
 	THIS_MODE_INFO.enableIndex = SAMPLE_CONVAR_TOGGLE;
-	
-	THIS_MODE_INFO.index = g_iLastModeIndex++;
-	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
-	
-	THIS_MODE_INFO.cvarInfo[SAMPLE_CONVAR_TOGGLE].cvar.AddChangeHook(OnSampleModeToggle);
+
+	FUNMODES_REGISTER_MODE();
 }
 
-void OnSampleModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
+void InitCvarsValues_Sample()
 {
-	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
+	int modeIndex = THIS_MODE_INFO.index;
+
+	g_bSample_Enabled = _FUNMODES_CVAR_GET_VALUE(modeIndex, SAMPLE_CONVAR_TOGGLE, Bool);
+}
+
+void Sample_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, const char[] newValue)
+{
+	switch (cvarIndex)
+	{
+		case SAMPLE_CONVAR_TOGGLE:
+		{
+			bool val = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
+			if (THIS_MODE_INFO.isOn)
+				CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, val, THIS_MODE_INFO.index);
+
+			g_bSample_Enabled = val;
+		}
+	}
 }
 
 stock void OnMapStart_Sample() {}
@@ -87,17 +103,16 @@ stock void Event_PlayerDeath_Sample(int client)
 
 public Action Cmd_SampleToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
+	if (!g_bSample_Enabled)
 	{
 		CReplyToCommand(client, "%s Sample Mode is currently Disabled", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
 	}
 
-	/* You can change whatever you want here */
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
-	
+
 	CPrintToChatAll("%s Sample Mode is now %s!", THIS_MODE_INFO.tag, THIS_MODE_INFO.isOn ? "On" : "Off");
-	
+
 	return Plugin_Handled;
 }
 
@@ -106,7 +121,7 @@ public Action Cmd_SampleSettings(int client, int args)
 {
 	if (!client)
 		return Plugin_Handled;
-		
+
 	Menu menu = new Menu(Menu_SampleSettings);
 
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
@@ -115,7 +130,7 @@ public Action Cmd_SampleSettings(int client, int args)
 
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
-	
+
 	return Plugin_Handled;
 }
 
@@ -125,7 +140,7 @@ int Menu_SampleSettings(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_End:
 			delete menu;
-		
+
 		case MenuAction_Cancel:
 		{
 			if (param2 == MenuCancel_ExitBack)

@@ -15,6 +15,13 @@ bool g_bDamageGameDisable;
 #define DAMAGEGAME_CONVAR_MODE			2
 #define DAMAGEGAME_CONVAR_TOGGLE		3
 
+float g_fDamageGame_TimeInterval;
+float g_fDamageGame_Damage;
+
+int g_iDamageGame_Mode;
+
+bool g_bDamageGame_Enabled;
+
 /* CALLED on Plugin Start */
 stock void OnPluginStart_DamageGame()
 {
@@ -25,54 +32,87 @@ stock void OnPluginStart_DamageGame()
 	RegAdminCmd("sm_fm_damage", Cmd_DamageGameToggle, ADMFLAG_CONVARS, "Enable/Disable Damage Game mode.");
 	RegAdminCmd("sm_fm_damagegame", Cmd_DamageGameToggle, ADMFLAG_CONVARS, "Enable/Disable Damage Game mode.");
 	RegAdminCmd("sm_fm_dg", Cmd_DamageGameToggle, ADMFLAG_CONVARS, "Enable/Disable Damage Game mode.");
-	
+
 	/* CONVARS */
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_TIME_INTERVAL,
-		"sm_damagegame_time_interval", "15.0", "Damage Game Timer Interval",
-		("15.0,20.0,30.0,40.0"), "float"
+		DAMAGEGAME_CONVAR_TIME_INTERVAL, "sm_damagegame_time_interval",
+		"15.0", "Damage Game Timer Interval",
+		("15.0,20.0,30.0,40.0"), CONVAR_FLOAT
 	);
+	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_TIME_INTERVAL].HookChange(DamageGame_OnConVarChange);
 
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_DAMAGE,
-		"sm_damagegame_damage", "15.0", "The amount of damage to apply to players who don't shoot zombies",
-		("5.0,10.0,15.0,20.0"), "float"
+		DAMAGEGAME_CONVAR_DAMAGE, "sm_damagegame_damage",
+		"15.0", "The amount of damage to apply to players who don't shoot zombies",
+		("5.0,10.0,15.0,20.0"), CONVAR_FLOAT
 	);
-	
+	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_DAMAGE].HookChange(DamageGame_OnConVarChange);
+
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_MODE,
-		"sm_damagegame_mode", "0", "DamageGame Mode (0 = Worst defenders, 1 = Doesn't defend for x time, 2 = Both)",
-		("0,1,2"), "int"
+		DAMAGEGAME_CONVAR_MODE, "sm_damagegame_mode",
+		"0", "DamageGame Mode (0 = Worst defenders, 1 = Doesn't defend for x time, 2 = Both)",
+		("0,1,2"), CONVAR_INT
 	);
-	
+	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_MODE].HookChange(DamageGame_OnConVarChange);
+
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, DAMAGEGAME_CONVAR_TOGGLE,
-		"sm_damagegame_enable", "1", "Enable/Disable Damage Game",
-		("0,1"), "bool"
+		DAMAGEGAME_CONVAR_TOGGLE, "sm_damagegame_enable",
+		"1", "Enable/Disable Damage Game",
+		("0,1"), CONVAR_BOOL
 	);
-	
+	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_TOGGLE].HookChange(DamageGame_OnConVarChange);
+
 	THIS_MODE_INFO.enableIndex = DAMAGEGAME_CONVAR_TOGGLE;
-	
-	THIS_MODE_INFO.index = g_iLastModeIndex++;
-	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
 
-	THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TOGGLE].cvar.AddChangeHook(OnDamageGameModeToggle);
-	
-	THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.AddChangeHook(OnDamageGameModeChange);
+	FUNMODES_REGISTER_MODE();
 }
 
-void OnDamageGameModeToggle(ConVar cvar, const char[] oldValue, const char[] newValue)
+void InitCvarsValues_DamageGame()
 {
-	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
+	int modeIndex = THIS_MODE_INFO.index;
+
+	g_fDamageGame_TimeInterval = _FUNMODES_CVAR_GET_VALUE(modeIndex, DAMAGEGAME_CONVAR_TIME_INTERVAL, Float);
+	g_fDamageGame_Damage = _FUNMODES_CVAR_GET_VALUE(modeIndex, DAMAGEGAME_CONVAR_DAMAGE, Float);
+
+	g_iDamageGame_Mode = _FUNMODES_CVAR_GET_VALUE(modeIndex, DAMAGEGAME_CONVAR_MODE, Int);
+
+	g_bDamageGame_Enabled = _FUNMODES_CVAR_GET_VALUE(modeIndex, DAMAGEGAME_CONVAR_TOGGLE, Bool);
 }
 
-void OnDamageGameModeChange(ConVar cvar, const char[] oldValue, const char[] newValue)
+void DamageGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, const char[] newValue)
 {
-	for (int i = 1; i <= MaxClients; i++)
-		g_iDealtDamage[i] = -1;
-		
-	DamageGame_StartTimers();
+	switch (cvarIndex)
+	{
+		case DAMAGEGAME_CONVAR_TIME_INTERVAL:
+		{
+			g_fDamageGame_TimeInterval = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Float);
+			DamageGame_StartTimers();
+		}
+
+		case DAMAGEGAME_CONVAR_DAMAGE:
+		{
+			g_fDamageGame_Damage = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Float);
+		}
+
+		case DAMAGEGAME_CONVAR_MODE:
+		{
+			g_iDamageGame_Mode = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Int);
+
+			for (int i = 1; i <= MaxClients; i++)
+				g_iDealtDamage[i] = -1;
+
+			DamageGame_StartTimers();
+		}
+
+		case DAMAGEGAME_CONVAR_TOGGLE:
+		{
+			bool val = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
+			if (THIS_MODE_INFO.isOn)
+				CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, val, THIS_MODE_INFO.index);
+
+			g_bDamageGame_Enabled = val;
+		}
+	}
 }
 
 stock void OnMapStart_DamageGame() {}
@@ -87,7 +127,7 @@ stock void OnClientPutInServer_DamageGame(int client)
 {
 	if (g_bSDKHook_OnTakeDamagePost[client])
 		return;
-	
+
 	SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 	g_bSDKHook_OnTakeDamagePost[client] = true;
 }
@@ -96,7 +136,7 @@ stock void OnClientDisconnect_DamageGame(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
-	
+
 	g_iDealtDamage[client] = -1;
 }
 
@@ -105,19 +145,19 @@ stock void ZR_OnClientInfected_DamageGame(int client)
 	#pragma unused client
 	if (!THIS_MODE_INFO.isOn)
 		return;
-		
+
 	if (!g_bMotherZombie && g_hDamageGameTimer == null)
-		DamageGame_StartTimers();		
+		DamageGame_StartTimers();
 }
 
 stock void Event_RoundStart_DamageGame()
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
-		
+
 	for (int i = 1; i <= MaxClients; i++)
 		g_iDealtDamage[i] = -1;
-		
+
 	delete g_hDamageGameTimer;
 }
 
@@ -136,7 +176,7 @@ stock void Event_PlayerDeath_DamageGame(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
-	
+
 	g_iDealtDamage[client] = -1;
 }
 
@@ -144,13 +184,13 @@ stock void OnTakeDamagePost_DamageGame(int victim, int attacker, float damage)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
-		
+
 	if (!(IsPlayerAlive(victim) && ZR_IsClientZombie(victim)))
 		return;
-	
+
 	if (!(0 < attacker <= MaxClients && IsPlayerAlive(attacker) && ZR_IsClientHuman(attacker)))
 		return;
-	
+
 	g_iDealtDamage[attacker] += RoundToNearest(damage);
 }
 
@@ -163,7 +203,7 @@ stock void OnWeaponEquip_DamageGame(int client, int weapon, Action &result)
 
 public Action Cmd_DamageGameToggle(int client, int args)
 {
-	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
+	if (!g_bDamageGame_Enabled)
 	{
 		CReplyToCommand(client, "%s Damage Game mode is currently disabled!", THIS_MODE_INFO.tag);
 		return Plugin_Handled;
@@ -179,34 +219,34 @@ public Action Cmd_DamageGameToggle(int client, int args)
 		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
 		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
 		FunModes_HookEvent(g_bEvent_PlayerDeath, "player_death", Event_PlayerDeath);
-		
+
 		for (int i = 1; i <= MaxClients; i++)
 		{
 			g_iDealtDamage[i] = -1;
-			
+
 			if (!IsClientInGame(i))
 				continue;
-			
+
 			OnClientPutInServer_DamageGame(i);
 		}
-		
-		CS_TerminateRound(3.0, CSRoundEnd_Draw);
+
+		FunModes_RestartRound();
 	}
 	else
 	{
 		delete g_hDamageGameTimer;
 	}
-			
+
 	return Plugin_Handled;
 }
 
 void DamageGame_StartTimers()
 {
-	int interval = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_TIME_INTERVAL].cvar.IntValue;
-	
+	int interval = RoundToNearest(g_fDamageGame_TimeInterval);
+
 	delete g_hDamageGameTimer;
-	g_hDamageGameTimer = CreateTimer(float(interval), Timer_DamageGame, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	switch (THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue)
+	g_hDamageGameTimer = CreateTimer(g_fDamageGame_TimeInterval, Timer_DamageGame, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	switch (g_iDamageGame_Mode)
 	{
 		case 0:	CPrintToChatAll("%s Humans with lowest damage dealt to zombies will get damaged every %d seconds!", THIS_MODE_INFO.tag, interval);
 		case 1: CPrintToChatAll("%s Humans who don't shoot zombies for {olive}%d seconds {lightgreen}(repeated) will be damaged", THIS_MODE_INFO.tag, interval);
@@ -225,17 +265,17 @@ Action Timer_DamageGame(Handle timer)
 		g_hDamageGameTimer = null;
 		return Plugin_Stop;
 	}
-	
+
 	if (g_bDamageGameDisable)
 		return Plugin_Handled;
-		
+
 	if (!g_bMotherZombie || g_bRoundEnd)
 		return Plugin_Handled;
-	
+
 	int lowestDamage = 999999, count, clients[MAXPLAYERS + 1];
-	
-	int mode = THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_MODE].cvar.IntValue;
-	
+
+	int mode = g_iDamageGame_Mode;
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		int thisDamage = 0;
@@ -246,27 +286,27 @@ Action Timer_DamageGame(Handle timer)
 				g_iDealtDamage[i] = -1;
 				continue;
 			}
-				
+
 			g_iDealtDamage[i] = 0;
 		}
 		else
 		{
 			thisDamage = g_iDealtDamage[i];
 		}
-		
+
 		if ((mode > 0 && thisDamage == 0) || (mode != 1 && (thisDamage == 0 || thisDamage < lowestDamage)))
 		{
 			clients[count++] = i;
 			lowestDamage = thisDamage;
 		}
 	}
-	
+
 	if (mode == 0 && lowestDamage == 999999)
 		return Plugin_Continue;
-	
+
 	if (!count)
 		return Plugin_Continue;
-	
+
 	/* Depending on the damagegame mode, we will specify which clients to damage */
 	for (int i = 0; i < count; i++)
 	{
@@ -278,13 +318,13 @@ Action Timer_DamageGame(Handle timer)
 				if (lowestDamage == g_iDealtDamage[client])
 					DamageGame_DamagePlayer(client);
 			}
-			
+
 			case 1:
 			{
 				if (g_iDealtDamage[client] == 0)
 					DamageGame_DamagePlayer(client);
 			}
-			
+
 			default:
 			{
 				if (g_iDealtDamage[client] == 0 || (lowestDamage != 0 && lowestDamage == g_iDealtDamage[client]))
@@ -292,25 +332,25 @@ Action Timer_DamageGame(Handle timer)
 			}
 		}
 	}
-	
+
 	if (mode > 0)
 	{
 		for (int i = 1; i <= MaxClients; i++)
 			g_iDealtDamage[i] = -1;
 	}
-	
+
 	return Plugin_Continue;
 }
 
 void DamageGame_DamagePlayer(int client)
 {
 	int health = GetClientHealth(client);
-	int newHealth = health - THIS_MODE_INFO.cvarInfo[DAMAGEGAME_CONVAR_DAMAGE].cvar.IntValue;
+	int newHealth = health - RoundToNearest(g_fDamageGame_Damage);
 	if (newHealth <= 0)
 		ForcePlayerSuicide(client);
-	else 
+	else
 		SetEntityHealth(client, newHealth);
-		
+
 	CPrintToChat(client, "%s You have been damaged for being a bad defender", THIS_MODE_INFO.tag);
 	CPrintToChatAll("%s %N {olive}got damaged for being a bad defender!", THIS_MODE_INFO.tag, client);
 }
@@ -323,11 +363,11 @@ public void Cmd_DamageGameSettings(int client)
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
 
 	menu.AddItem(NULL_STRING, "Show Cvars\n ");
-	
+
 	char item[20];
 	FormatEx(item, sizeof(item), "%s Damage", g_bDamageGameDisable ? "Enable" : "Disable");
 	menu.AddItem(NULL_STRING, item);
-	
+
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -338,7 +378,7 @@ int Menu_DamageGameSettings(Menu menu, MenuAction action, int param1, int param2
 	{
 		case MenuAction_End:
 			delete menu;
-		
+
 		case MenuAction_Cancel:
 		{
 			if (param2 == MenuCancel_ExitBack)

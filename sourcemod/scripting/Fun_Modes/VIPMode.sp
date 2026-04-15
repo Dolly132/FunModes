@@ -1,8 +1,8 @@
 /*
     (). FunModes V2:
-        
+
     @file           VIPMode.sp
-    @Usage          Functions for the VIP mode.
+    @Usage          Functions for the VIPMode Mode.
 */
 
 #pragma semicolon 1
@@ -13,75 +13,111 @@ ModeInfo g_VIPModeInfo;
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_VIPModeInfo
 
-#define VIPMODE_CONVAR_TIMER 	0
-#define VIPMODE_CONVAR_COUNT 	1
-#define VIPMODE_CONVAR_LASER 	2
-#define VIPMODE_CONVAR_VIP_MAX 	3
-#define VIPMODE_CONVAR_TOGGLE	4
+#define VIPMODE_CONVAR_TIMER     0
+#define VIPMODE_CONVAR_COUNT     1
+#define VIPMODE_CONVAR_LASER     2
+#define VIPMODE_CONVAR_VIP_MAX   3
+#define VIPMODE_CONVAR_TOGGLE    4
 
-bool g_bDiedFromLaser[MAXPLAYERS+1];
+bool g_bDiedFromLaser[MAXPLAYERS + 1];
 bool g_bIsVIP[MAXPLAYERS + 1];
 
-/* Timers */
 Handle g_hKillAllTimer = null;
 Handle g_hVIPRoundStartTimer = null;
 Handle g_hVIPBeaconTimer[MAXPLAYERS + 1] = { null, ... };
 
-/* CALLED ON PLUGIN START */
+float g_fVIP_Timer;
+float g_fVIP_KillDelay;
+bool g_bVIP_LaserException;
+int g_iVIP_Max;
+bool g_bVIP_Enabled;
+
 stock void OnPluginStart_VIPMode()
 {
 	THIS_MODE_INFO.name = "VIPMode";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-VIPMode]{lightgreen}";
 
-	/* Commands */
-	RegAdminCmd("sm_fm_vipmode", Cmd_VIPModeToggle, ADMFLAG_CONVARS, "Enable/Disable VIP Mode");
-	RegAdminCmd("sm_vipmode_setvip", Cmd_SetVIP, ADMFLAG_CONVARS);
+	RegAdminCmd("sm_fm_vipmode", Cmd_VIPModeToggle, ADMFLAG_CONVARS, "Turn VIPMode On/Off");
+	RegAdminCmd("sm_vipmode_setvip", Cmd_SetVIP, ADMFLAG_CONVARS, "Set a player as VIP");
 	RegConsoleCmd("sm_checkvip", Cmd_CheckVIP);
 	RegAdminCmd("sm_vipmode_settings", Cmd_VIPModeSettings, ADMFLAG_CONVARS, "Open VIPMode Settings Menu");
-	
-	/* CONVARS */
-	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, VIPMODE_CONVAR_TIMER, 
-		"sm_vipmode_timer",	"15", "After how many seconds from round start to pick VIP",
-		("15.0,25.0,40.0,60.0"), "float"
-	);
 
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, VIPMODE_CONVAR_COUNT,
-		"sm_vipmode_counter", "3", "After how many seconds all the other humans will be slayed after the vip dies",
-		("2.0,3.0,5.0,10.0"), "float"
+		VIPMODE_CONVAR_TIMER, "sm_vipmode_timer",
+		"15", "How many seconds after round start before choosing the VIPs",
+		("15,25,40,60"), CONVAR_FLOAT
 	);
+	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_TIMER].HookChange(VIPMode_OnConVarChange);
 
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, VIPMODE_CONVAR_LASER,
-		"sm_vipmode_laser", "1", ("Don't Kill all humans when vip dies to a laser, 1 = Enabled, 0 = Disabled"),
-		("0,1"), "bool"
+		VIPMODE_CONVAR_COUNT, "sm_vipmode_counter",
+		"3", "How many seconds to wait before killing all CTs when all VIPs die",
+		("2,3,5,10"), CONVAR_FLOAT
 	);
+	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_COUNT].HookChange(VIPMode_OnConVarChange);
 
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, VIPMODE_CONVAR_VIP_MAX,
-		"sm_vipmode_max_vips", "1", "How many VIPs to be picked",
-		("1,2,3,4,5"), "int"
+		VIPMODE_CONVAR_LASER, "sm_vipmode_laser",
+		"1", "Whether laser deaths should be ignored as a VIP death exception",
+		("0,1"), CONVAR_BOOL
 	);
+	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_LASER].HookChange(VIPMode_OnConVarChange);
 
 	DECLARE_FM_CVAR(
-		THIS_MODE_INFO.cvarInfo, VIPMODE_CONVAR_TOGGLE,
-		"sm_vipmode_enable", "1", "Enable/Disable the VIP Mode (This differes from turning it on/off)",
-		("0,1"), "bool"
+		VIPMODE_CONVAR_VIP_MAX, "sm_vipmode_max_vips",
+		"1", "Maximum number of VIPs to pick each round",
+		("1,2,3,4,5"), CONVAR_INT
 	);
+	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_VIP_MAX].HookChange(VIPMode_OnConVarChange);
+
+	DECLARE_FM_CVAR(
+		VIPMODE_CONVAR_TOGGLE, "sm_vipmode_enable",
+		"1", "Enable/Disable VIPMode (This differs from turning it on/off)",
+		("0,1"), CONVAR_BOOL
+	);
+	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_TOGGLE].HookChange(VIPMode_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = VIPMODE_CONVAR_TOGGLE;
 
-	THIS_MODE_INFO.index = g_iLastModeIndex++;
-	g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO;
-
-	THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_TOGGLE].cvar.AddChangeHook(OnVIPModeToggle);	
+	FUNMODES_REGISTER_MODE();
 }
 
-void OnVIPModeToggle(ConVar cvar, const char[] newValue, const char[] oldValue)
+void InitCvarsValues_VIPMode()
 {
-	if (THIS_MODE_INFO.isOn)
-		CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, cvar.BoolValue, THIS_MODE_INFO.index);
+	int modeIndex = THIS_MODE_INFO.index;
+
+	g_fVIP_Timer = _FUNMODES_CVAR_GET_VALUE(modeIndex, VIPMODE_CONVAR_TIMER, Float);
+	g_fVIP_KillDelay = _FUNMODES_CVAR_GET_VALUE(modeIndex, VIPMODE_CONVAR_COUNT, Float);
+	g_bVIP_LaserException = _FUNMODES_CVAR_GET_VALUE(modeIndex, VIPMODE_CONVAR_LASER, Bool);
+	g_iVIP_Max = _FUNMODES_CVAR_GET_VALUE(modeIndex, VIPMODE_CONVAR_VIP_MAX, Int);
+	g_bVIP_Enabled = _FUNMODES_CVAR_GET_VALUE(modeIndex, VIPMODE_CONVAR_TOGGLE, Bool);
+}
+
+void VIPMode_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, const char[] newValue)
+{
+	switch (cvarIndex)
+	{
+		case VIPMODE_CONVAR_TIMER:
+			g_fVIP_Timer = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Float);
+
+		case VIPMODE_CONVAR_COUNT:
+			g_fVIP_KillDelay = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Float);
+
+		case VIPMODE_CONVAR_LASER:
+			g_bVIP_LaserException = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
+
+		case VIPMODE_CONVAR_VIP_MAX:
+			g_iVIP_Max = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Int);
+
+		case VIPMODE_CONVAR_TOGGLE:
+		{
+			bool val = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
+			if (THIS_MODE_INFO.isOn)
+				CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, val, THIS_MODE_INFO.index);
+
+			g_bVIP_Enabled = val;
+		}
+	}
 }
 
 stock void OnMapStart_VIPMode() {}
@@ -100,6 +136,9 @@ stock void OnMapEnd_VIPMode()
 
 stock void OnClientPutInServer_VIPMode(int client)
 {
+	if (!THIS_MODE_INFO.isOn)
+		return;
+
 	if (g_bSDKHook_OnTakeDamage[client])
 		return;
 	
@@ -141,7 +180,7 @@ stock void Event_RoundStart_VIPMode()
 	}
 
 	delete g_hVIPRoundStartTimer;
-	g_hVIPRoundStartTimer = CreateTimer(THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_TIMER].cvar.FloatValue, VIPRoundStart_Timer, _, TIMER_FLAG_NO_MAPCHANGE);
+	g_hVIPRoundStartTimer = CreateTimer(g_fVIP_Timer, VIPRoundStart_Timer, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock void Event_RoundEnd_VIPMode() {}
@@ -152,7 +191,7 @@ stock void Event_PlayerSpawn_VIPMode(int client)
 
 stock void Event_PlayerTeam_VIPMode(Event event)
 {
-	if (!!THIS_MODE_INFO.isOn)
+	if (!THIS_MODE_INFO.isOn)
 		return;
 	
 	int client = GetClientOfUserId(event.GetInt("userid"));
@@ -193,10 +232,10 @@ stock void OnTakeDamagePost_VIPMode(int victim, int attacker, float damage)
 stock void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &result)
 {
 	#pragma unused result
-	
-	if (!THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_LASER].cvar.BoolValue)
+
+	if (!THIS_MODE_INFO.isOn || !g_bVIP_LaserException)
 		return;
-	
+
 	if (!g_bIsVIP[victim])
 		return;
 
@@ -223,10 +262,10 @@ stock void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &
 
 	if (strcmp(parentClassName, "func_movelinear") == 0 || strcmp(parentClassName, "func_door") == 0)
 		isFromLaser = true;
-	
+
 	if (!isFromLaser)
 		return;
-	
+
 	g_bDiedFromLaser[victim] = false;
 	if (damage > GetClientHealth(victim))
 		g_bDiedFromLaser[victim] = true;
@@ -239,212 +278,51 @@ stock void OnWeaponEquip_VIPMode(int client, int weapon, Action &result)
 	#pragma unused result
 }
 
-Action VIPMode_KillAllTimer(Handle timer)
+public Action Cmd_VIPModeToggle(int client, int args)
 {
-	g_hKillAllTimer = null;
-
-	if (!THIS_MODE_INFO.isOn)
-		return Plugin_Stop;
-
-	if (GetCurrentVIPsCount() > 0)
+	if (!g_bVIP_Enabled)
 	{
-		CPrintToChatAll("%s Found a VIP player, {olive}Cancelling The kills...", THIS_MODE_INFO.tag);
-		return Plugin_Stop;
+		CReplyToCommand(client, "%s VIPMode is currently Disabled", THIS_MODE_INFO.tag);
+		return Plugin_Handled;
 	}
-	
+
+	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
+
+	CPrintToChatAll("%s VIPMode is now %s!", THIS_MODE_INFO.tag, THIS_MODE_INFO.isOn ? "On" : "Off");
+
+	if (THIS_MODE_INFO.isOn)
+	{
+		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
+		FunModes_HookEvent(g_bEvent_PlayerDeath, "player_death", Event_PlayerDeath);
+	}
+
+	delete g_hKillAllTimer;
+	delete g_hVIPRoundStartTimer;
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
-			continue;
+		if (THIS_MODE_INFO.isOn && IsClientInGame(i))
+			OnClientPutInServer_VIPMode(i);
 
-		ForcePlayerSuicide(i);
+		g_bIsVIP[i] = false;
+		g_bDiedFromLaser[i] = false;
+		delete g_hVIPBeaconTimer[i];
 	}
 
-	return Plugin_Continue;
+	return Plugin_Handled;
 }
 
 Action VIPRoundStart_Timer(Handle timer)
 {
 	g_hVIPRoundStartTimer = null;
 
-	if (THIS_MODE_INFO.isOn)
+	if (!THIS_MODE_INFO.isOn)
 		return Plugin_Stop;
 
-	/* CHECK IF THERE IS ALREADY VIP SET BY ADMIN */
-	if (GetCurrentVIPsCount() > 0)
-		return Plugin_Stop;
-
-	/* Lets pick a random human */
-	for (int i = 0; i < THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_VIP_MAX].cvar.IntValue; i++)
+	for (int i = 0; i < g_iVIP_Max; i++)
 		VIP_PickRandom();
-		
+
 	return Plugin_Stop;
-}
-
-Action VIP_BeaconTimer(Handle timer, int userid)
-{
-	int client = GetClientOfUserId(userid);
-	if (!client)
-	{
-		return Plugin_Stop;
-	}
-
-	if (!THIS_MODE_INFO.isOn)
-	{
-		g_hVIPBeaconTimer[client] = null;
-		return Plugin_Stop;	
-	}
-
-	if (!IsPlayerAlive(client) || GetClientTeam(client) != CS_TEAM_CT)
-	{
-		g_hVIPBeaconTimer[client] = null;
-		return Plugin_Stop;
-	}
-
-	if (g_bRoundEnd)
-	{
-		g_hVIPBeaconTimer[client] = null;
-		return Plugin_Stop;
-	}
-
-	BeaconPlayer(client, 1); 
-	return Plugin_Continue;
-}
-
-public Action Cmd_VIPModeToggle(int client, int args)
-{
-	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
-	{
-		CReplyToCommand(client, "%s VIPmode is currently disabled!", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-
-	bool isOn = THIS_MODE_INFO.isOn;
-	if (isOn)
-	{
-		isOn = false;
-		if (!client)
-			CReplyToCommand(client, "%s VIP Mode is now OFF!", THIS_MODE_INFO.tag);
-		else
-			CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "VIPMode_Disabled", client);
-		
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			g_bIsVIP[i] = false;
-			delete g_hVIPBeaconTimer[i];
-		}
-	}
-	else
-	{
-		isOn = true;
-		
-		/* Events Hooks */
-		FunModes_HookEvent(g_bEvent_RoundStart, "round_start", Event_RoundStart);
-		FunModes_HookEvent(g_bEvent_RoundEnd, "round_end", Event_RoundEnd);
-		FunModes_HookEvent(g_bEvent_PlayerTeam, "player_team", Event_PlayerTeam);
-		FunModes_HookEvent(g_bEvent_PlayerDeath, "player_death", Event_PlayerDeath);
-		
-		if (!client)
-			CReplyToCommand(client, "%s VIP Mode is now ON!", THIS_MODE_INFO.tag);
-		else
-			CReplyToCommand(client, "%s %T", THIS_MODE_INFO.tag, "VIPMode_Enabled", client);
-		
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!IsClientInGame(i) || IsFakeClient(i))
-				continue;
-
-			SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
-		}
-	}
-
-	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, isOn, THIS_MODE_INFO.index);
-	return Plugin_Handled;
-}
-
-Action Cmd_SetVIP(int client, int args)
-{
-	if (!THIS_MODE_INFO.isOn)
-	{
-		CReplyToCommand(client, "%s VIP Mode is currently OFF!", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-
-	if (args < 1)
-	{
-		CReplyToCommand(client, "%s Usage: sm_vipmode_setvip <player>", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-
-	char arg[65];
-	GetCmdArg(1, arg, sizeof(arg));
-	int target = FindTarget(client, arg, false, false);
-
-	if (target < 1)
-	{
-		ReplyToTargetError(client, COMMAND_TARGET_NOT_IN_GAME);
-		return Plugin_Handled;
-	}
-
-	if (g_bIsVIP[target])
-	{
-		CReplyToCommand(client, "%s The specified target is already VIP!", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-
-	if (!IsPlayerAlive(target) || GetClientTeam(target) != CS_TEAM_CT)
-	{
-		CReplyToCommand(client, "%s Cannot set VIP to a player that is not human.", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-	
-	g_bIsVIP[target] = true;
-	CPrintToChatAll("%s {olive}%N {lightgreen}is a VIP!", THIS_MODE_INFO.tag, target);
-
-	delete g_hVIPBeaconTimer[target];
-	g_hVIPBeaconTimer[target] = CreateTimer(1.0, VIP_BeaconTimer, GetClientUserId(target), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-	return Plugin_Handled;
-}
-
-Action Cmd_CheckVIP(int client, int args)
-{
-	if (!THIS_MODE_INFO.isOn)
-	{
-		CReplyToCommand(client, "%s VIP Mode is currently OFF", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-	
-	if (GetCurrentVIPsCount() == 0)
-	{
-		CReplyToCommand(client, "%s No VIP was found!", THIS_MODE_INFO.tag);
-		return Plugin_Handled;
-	}
-	
-	char vipPlayers[200];
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!g_bIsVIP[i])
-			continue;
-				
-		Format(vipPlayers, sizeof(vipPlayers), "%s%N, ", vipPlayers, i);
-	}
-	
-	CReplyToCommand(client, "%s The current {purple}VIPs {olive}are: {purple}%s", THIS_MODE_INFO.tag, vipPlayers);
-	return Plugin_Handled;
-}
-
-stock int GetCurrentVIPsCount()
-{
-	int count;
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if (!g_bIsVIP[i]) 
-			continue;
-				
-		count++;
-	}
-	
-	return count;
 }
 
 stock void RemoveClientVIP(int client, bool kill, const char[] translation = "")
@@ -456,58 +334,151 @@ stock void RemoveClientVIP(int client, bool kill, const char[] translation = "")
 	
 	if (kill && GetCurrentVIPsCount() == 0)
 	{
-		int counter = THIS_MODE_INFO.cvarInfo[VIPMODE_CONVAR_COUNT].cvar.IntValue;
-		CPrintToChatAll("%s %t", THIS_MODE_INFO.tag, "VIPMode_KillAll", counter);
+		CPrintToChatAll("%s %t", THIS_MODE_INFO.tag, "VIPMode_KillAll", RoundToNearest(g_fVIP_KillDelay));
 
 		delete g_hKillAllTimer;
-		g_hKillAllTimer = CreateTimer(float(counter), VIPMode_KillAllTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+		g_hKillAllTimer = CreateTimer(g_fVIP_KillDelay, VIPMode_KillAllTimer, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
-stock void VIP_PickRandom() 
+stock void VIP_PickRandom()
 {
-	/* Lets pick a random human */
-	int clientsCount[MAXPLAYERS + 1];
-	int humansCount;
+	int players[MAXPLAYERS + 1];
+	int count;
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT || g_bIsVIP[i])
 			continue;
 
-		clientsCount[humansCount++] = i;
+		players[count] = i;
+		count++;
 	}
 
-	if (humansCount <= 0)
-		return;
-	
-	int random = clientsCount[GetRandomInt(0, (humansCount - 1))];
-	if (random < 1)
+	if (!count)
 		return;
 
-	g_bIsVIP[random] = true;
-	CPrintToChatAll("%s {olive}%N {lightgreen}is a VIP!", THIS_MODE_INFO.tag, random);
+	int client = players[GetRandomInt(0, count - 1)];
 
-	delete g_hVIPBeaconTimer[random];
-	g_hVIPBeaconTimer[random] = CreateTimer(1.0, VIP_BeaconTimer, GetClientUserId(random), TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+	g_bIsVIP[client] = true;
+
+	delete g_hVIPBeaconTimer[client];
+	g_hVIPBeaconTimer[client] = CreateTimer(
+		1.0,
+		VIP_BeaconTimer,
+		GetClientUserId(client),
+		TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE
+	);
+
+	CPrintToChatAll("%s %N is VIP!", THIS_MODE_INFO.tag, client);
 }
 
-/* VIPMode Settings */
+Action VIP_BeaconTimer(Handle timer, int userid)
+{
+	int client = GetClientOfUserId(userid);
+
+	if (!client || !IsPlayerAlive(client) || !THIS_MODE_INFO.isOn)
+		return Plugin_Stop;
+
+	BeaconPlayer(client, 1);
+
+	return Plugin_Continue;
+}
+
+Action VIPMode_KillAllTimer(Handle timer)
+{
+	g_hKillAllTimer = null;
+
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Stop;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientInGame(i) || !IsPlayerAlive(i) || GetClientTeam(i) != CS_TEAM_CT)
+			continue;
+
+		ForcePlayerSuicide(i);
+	}
+
+	return Plugin_Stop;
+}
+
+stock int GetCurrentVIPsCount()
+{
+	int count;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (g_bIsVIP[i])
+			count++;
+	}
+
+	return count;
+}
+
+public Action Cmd_SetVIP(int client, int args)
+{
+	if (!THIS_MODE_INFO.isOn)
+		return Plugin_Handled;
+
+	if (args < 1)
+		return Plugin_Handled;
+
+	char arg[64];
+	GetCmdArg(1, arg, sizeof(arg));
+
+	int target = FindTarget(client, arg, false, false);
+
+	if (target < 1 || !IsPlayerAlive(target) || ZR_IsClientZombie(target))
+		return Plugin_Handled;
+
+	g_bIsVIP[target] = true;
+
+	delete g_hVIPBeaconTimer[target];
+	g_hVIPBeaconTimer[target] = CreateTimer(
+		1.0,
+		VIP_BeaconTimer,
+		GetClientUserId(target),
+		TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE
+	);
+
+	CPrintToChatAll("%s %N has been set as VIP!", THIS_MODE_INFO.tag, target);
+
+	return Plugin_Handled;
+}
+
+public Action Cmd_CheckVIP(int client, int args)
+{
+	bool found;
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!g_bIsVIP[i])
+			continue;
+
+		CReplyToCommand(client, "%s VIP: %N", THIS_MODE_INFO.tag, i);
+		found = true;
+	}
+
+	if (!found)
+		CReplyToCommand(client, "%s no VIP", THIS_MODE_INFO.tag);
+
+	return Plugin_Handled;
+}
+
 public Action Cmd_VIPModeSettings(int client, int args)
 {
 	if (!client)
 		return Plugin_Handled;
-		
+
 	Menu menu = new Menu(Menu_VIPModeSettings);
 
 	menu.SetTitle("%s - Settings", THIS_MODE_INFO.name);
-
 	menu.AddItem(NULL_STRING, "Show Cvars\n");
-	menu.AddItem(NULL_STRING, "Check current VIPs", THIS_MODE_INFO.isOn ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
-	menu.AddItem(NULL_STRING, "Set Player VIP", THIS_MODE_INFO.isOn ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
+
 	return Plugin_Handled;
 }
 
@@ -517,7 +488,7 @@ int Menu_VIPModeSettings(Menu menu, MenuAction action, int param1, int param2)
 	{
 		case MenuAction_End:
 			delete menu;
-		
+
 		case MenuAction_Cancel:
 		{
 			if (param2 == MenuCancel_ExitBack)
@@ -526,179 +497,9 @@ int Menu_VIPModeSettings(Menu menu, MenuAction action, int param1, int param2)
 
 		case MenuAction_Select:
 		{
-			switch (param2)
-			{
-				case 0:
-				{
-					ShowCvarsInfo(param1, THIS_MODE_INFO);
-				}
-
-				case 1:
-				{
-					ShowCurrentVIPs(param1);
-				}
-
-				case 2:
-				{
-					ShowSetPlayerVIP(param1);
-				}
-			}
+			ShowCvarsInfo(param1, THIS_MODE_INFO);
 		}
 	}
 
-	return 0;
-}
-
-void ShowCurrentVIPs(int client)
-{
-	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
-		return;
-
-	Menu menu = new Menu(Menu_VIPCurrentVIPs);
-
-	menu.SetTitle("%s - Current VIPs List", THIS_MODE_INFO.name);
-
-	if (!THIS_MODE_INFO.isOn)
-		menu.AddItem(NULL_STRING, "The VIPMode is currently Off!", ITEMDRAW_DISABLED);
-	else
-	{
-		bool found = false;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (!g_bIsVIP[i])
-				continue;
-			
-			found = true;
-			int userid = GetClientUserId(i);
-			
-			char useridStr[10];
-			IntToString(userid, useridStr, sizeof(useridStr));
-
-			char menuItem[70];
-			FormatEx(menuItem, sizeof(menuItem), "[#%d] %N - Remove", userid, i);
-
-			menu.AddItem(useridStr, menuItem);
-		}
-
-		if (!found)
-			menu.AddItem(NULL_STRING, "There's no VIP player yet!", ITEMDRAW_DISABLED);
-	}
-
-	menu.Display(client, MENU_TIME_FOREVER);
-}
-
-int Menu_VIPCurrentVIPs(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_End:
-			delete menu;
-		
-		case MenuAction_Cancel:
-		{
-			if (param2 == MenuCancel_ExitBack)
-				Cmd_VIPModeSettings(param1, 0);
-		}
-
-		case MenuAction_Select:
-		{
-			char useridStr[10];
-			menu.GetItem(param2, useridStr, sizeof(useridStr));
-
-			int userid = StringToInt(useridStr);
-			int client = GetClientOfUserId(userid);
-			if (!client || !g_bIsVIP[client])
-			{
-				CPrintToChat(param1, "%s The selected player either left or is no longer {purple]VIP!", THIS_MODE_INFO.tag);
-				ShowCurrentVIPs(param1);
-				return 0;
-			}
-
-			RemoveClientVIP(client, false, "VIPMode_AdminRemove");
-			ShowCurrentVIPs(param1);
-		}
-	}
-	
-	return 0;
-}
-
-void ShowSetPlayerVIP(int client)
-{
-	if (!THIS_MODE_INFO.cvarInfo[THIS_MODE_INFO.enableIndex].cvar.BoolValue)
-		return;
-
-	Menu menu = new Menu(Menu_VIPSetPlayerVIP);
-
-	menu.SetTitle("%s - Players List - Select a player to set them to a VIP", THIS_MODE_INFO.name);
-
-	if (!THIS_MODE_INFO.isOn)
-		menu.AddItem(NULL_STRING, "The VIPMode is currently Off!", ITEMDRAW_DISABLED);
-	else
-	{
-		bool found = false;
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if (g_bIsVIP[i] || !IsClientInGame(i) || IsFakeClient(i) || !IsPlayerAlive(i))
-				continue;
-			
-			if (ZR_IsClientZombie(i))
-				continue;
-
-			found = true;
-			int userid = GetClientUserId(i);
-			
-			char useridStr[10];
-			IntToString(userid, useridStr, sizeof(useridStr));
-
-			char menuItem[70];
-			FormatEx(menuItem, sizeof(menuItem), "[#%d] %N - Set VIP", userid, i);
-
-			menu.AddItem(useridStr, menuItem);
-		}
-
-		if (!found)
-			menu.AddItem(NULL_STRING, "No player was found!", ITEMDRAW_DISABLED);
-	}
-
-	menu.Display(client, MENU_TIME_FOREVER);
-}
-
-int Menu_VIPSetPlayerVIP(Menu menu, MenuAction action, int param1, int param2)
-{
-	switch (action)
-	{
-		case MenuAction_End:
-			delete menu;
-		
-		case MenuAction_Cancel:
-		{
-			if (param2 == MenuCancel_ExitBack)
-				Cmd_VIPModeSettings(param1, 0);
-		}
-
-		case MenuAction_Select:
-		{
-			char useridStr[10];
-			menu.GetItem(param2, useridStr, sizeof(useridStr));
-
-			int userid = StringToInt(useridStr);
-			int client = GetClientOfUserId(userid);
-			if (!client || g_bIsVIP[client] || ZR_IsClientZombie(client))
-			{
-				CPrintToChat(param1, "%s The selected player either left, died or is currently a {purple]VIP!", THIS_MODE_INFO.tag);
-				ShowCurrentVIPs(param1);
-				return 0;
-			}
-
-			g_bIsVIP[client] = true;
-			CPrintToChatAll("%s {olive}%N {lightgreen}is a VIP!", THIS_MODE_INFO.tag, client);
-
-			delete g_hVIPBeaconTimer[client];
-			g_hVIPBeaconTimer[client] = CreateTimer(1.0, VIP_BeaconTimer, userid, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
-
-			ShowCurrentVIPs(param1);
-		}
-	}
-	
 	return 0;
 }
