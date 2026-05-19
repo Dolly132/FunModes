@@ -2,10 +2,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_FogInfo;
+static int g_iFogIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iFogIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_FogInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define FOGInput_Color  0
 #define FOGInput_Start  1
@@ -39,6 +42,9 @@ bool g_bFog_Enabled;
 
 stock void OnPluginStart_Fog()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "Fog";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-FOG]{lightgreen}";
 
@@ -56,8 +62,6 @@ stock void OnPluginStart_Fog()
 	THIS_MODE_INFO.cvars[FOG_CONVAR_TOGGLE].HookChange(Fog_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = FOG_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_Fog()

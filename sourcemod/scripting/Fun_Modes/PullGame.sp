@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_PullGameInfo;
+static int g_iPullGameIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iPullGameIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_PullGameInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define PULLGAME_CONVAR_TIMER_INTERVAL 0
 #define PULLGAME_CONVAR_SPEED          1
@@ -38,6 +41,9 @@ Handle g_hPullGameTimer;
 
 stock void OnPluginStart_PullGame()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "PullGame";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-PullGame]{lightgreen}";
 
@@ -87,8 +93,6 @@ stock void OnPluginStart_PullGame()
 	THIS_MODE_INFO.cvars[PULLGAME_CONVAR_TOGGLE].HookChange(PullGame_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = PULLGAME_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_PullGame()
@@ -125,7 +129,6 @@ void PullGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue
 		case PULLGAME_CONVAR_TOGGLE:
 		{
 			bool val = _FUNMODES_CVAR_GET_VALUE(modeIndex, cvarIndex, Bool);
-			PrintToChatAll("New value for pullgame enable: %d", val);
 			if (THIS_MODE_INFO.isOn)
 				CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, val, THIS_MODE_INFO.index);
 

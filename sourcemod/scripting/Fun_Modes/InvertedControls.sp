@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_ICInfo;
+static int g_iICIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iICIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_ICInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define IC_CONVAR_TOGGLE 0
 
@@ -20,6 +23,9 @@ bool g_bIC_Enabled;
 /* CALLED ON PLUGIN START */
 stock void OnPluginStart_IC()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "IC";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-InvertedControls]{lightgreen}";
 
@@ -49,8 +55,6 @@ stock void OnPluginStart_IC()
 	THIS_MODE_INFO.cvars[IC_CONVAR_TOGGLE].HookChange(IC_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = IC_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_IC()

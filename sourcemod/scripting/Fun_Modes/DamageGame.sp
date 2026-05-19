@@ -1,10 +1,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_DamageGameInfo;
+static int g_iDamageGameIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iDamageGameIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_DamageGameInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 int g_iDealtDamage[MAXPLAYERS + 1] = {-1, ...};
 Handle g_hDamageGameTimer;
@@ -25,6 +28,9 @@ bool g_bDamageGame_Enabled;
 /* CALLED on Plugin Start */
 stock void OnPluginStart_DamageGame()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "DamageGame";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-DamageGame]{lightgreen}";
 
@@ -63,8 +69,6 @@ stock void OnPluginStart_DamageGame()
 	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_TOGGLE].HookChange(DamageGame_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = DAMAGEGAME_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_DamageGame()

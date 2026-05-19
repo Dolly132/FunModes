@@ -53,12 +53,12 @@ public void OnPluginStart()
 		RegAdminCmd(commands[i], Cmd_FunModes, ADMFLAG_CONVARS, "Show all available funmodes");
 	}
 
-	RegAdminCmd("sm_fcvar", Cmd_FunModesCvars, ADMFLAG_CONVARS, "Change a FunModes cvar");
+	RegAdminCmd("sm_fmcvar", Cmd_FunModesCvars, ADMFLAG_CONVARS, "Change a FunModes cvar");
 
 	g_iNetPropAmmoIndex = FindSendPropInfo("CBasePlayer", "m_iAmmo");
 	if (g_iNetPropAmmoIndex == -1)
 		SetFailState("[FunModes] Could not find offset `CBasePlayer::m_iAmmo`");
-		
+
 	GameData gd = new GameData("sdkhooks.games/engine.ep2v");
 	if (gd == null)
 		LogError("[FunModes] Could not find \"sdkhooks.games/engine.ep2v.txt\" file.");
@@ -71,7 +71,7 @@ public void OnPluginStart()
 			LogError("[FunModes] Could not find the offset of \"Weapon_Switch\", some features may be neglected");
 			return;
 		}
-		
+
 		StartPrepSDKCall(SDKCall_Player);
 		PrepSDKCall_SetVirtual(offset);
 		
@@ -82,7 +82,7 @@ public void OnPluginStart()
 		
 		if (g_hSwitchSDKCall == null)
 			LogError("[FunModes] Incorrect offset for \"Weapon_Switch\", Cannot get a good SDKCall Handle");
-	
+
 		delete gd;
 	}
 }
@@ -93,7 +93,7 @@ public void OnPluginEnd()
 	{
 		if (!IsClientInGame(i) || IsFakeClient(i))
 			continue;
-		
+
 		OnClientDisconnect(i);
 	}
 }
@@ -103,7 +103,7 @@ public void OnMapStart()
 	g_LaserSprite = PrecacheModel("sprites/laser.vmt");
 	g_HaloSprite = PrecacheModel("materials/sprites/halo.vtf");
 	g_iLaserBeam = PrecacheModel("materials/sprites/laserbeam.vmt");
-	
+
 	PrecacheSound(Beacon_Sound, true);
 
 	DECLARE_FM_FORWARD(OnMapStart);
@@ -173,18 +173,18 @@ void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int
 Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
 	Action result = Plugin_Continue;
-	
+
 	DECLARE_FM_FORWARD_PARAM4(OnTakeDamage, victim, attacker, damage, result);
-	
+
 	return result;
 }
 
 Action OnWeaponEquip(int client, int weapon)
 {
 	Action result = Plugin_Continue;
-	
+
 	DECLARE_FM_FORWARD_PARAM3(OnWeaponEquip, client, weapon, result);
-	
+
 	return result;
 }
 
@@ -205,10 +205,10 @@ void FunModes_RestartRound()
 	{
 		if (!IsClientInGame(i) || !IsPlayerAlive(i))
 			continue;
-		
+
 		ForcePlayerSuicide(i);
 	}
-	
+
 	CS_TerminateRound(3.0, CSRoundEnd_Draw);
 }
 
@@ -363,14 +363,14 @@ int Menu_DisplayConVars(Menu menu, MenuAction action, int param1, int param2)
 			Function myFunction = GetFunctionByName(null, functionName);
 			if (myFunction == INVALID_FUNCTION)
 				return -1;
-				
+
 			Call_StartFunction(null, myFunction);
 
 			Call_PushCell(param1);
 			Call_PushCell(0);
-			
+
 			Call_Finish();
-			
+
 			if (param2 == 0)
 				DisplayModeInfo(param1, g_iPreviousModeIndex[param1]);
 		}
@@ -488,7 +488,7 @@ int Menu_ShowCvarInfo(Menu menu, MenuAction action, int param1, int param2)
 		{
 			char data[100];
 			menu.GetItem(param2, data, sizeof(data));
-			
+
 			char dataEx[3][22];
 			ExplodeString(data, "|", dataEx, sizeof(dataEx), sizeof(dataEx[]));
 
@@ -527,7 +527,7 @@ Action Cmd_FunModesCvars(int client, int args)
 {
 	if (args < 1)
 	{
-		CReplyToCommand(client, "[FunModes] Usage: sm_fcvar <cvar> <value>");
+		CReplyToCommand(client, "[FunModes] Usage: sm_fmcvar <cvar> <value>");
 		return Plugin_Handled;
 	}
 
@@ -700,7 +700,7 @@ public void OnConfigsExecuted()
 			cvar.values = values;
 
 		g_ModesInfo[modeIndex].cvars[cvarIndex] = cvar;
-
+		g_ModesInfo[modeIndex].cvars[cvarIndex].currentValue = cvar.currentValue;
 		if (++cvarIndex >= maxCvars)
 		{
 			if (++modeIndex >= g_iLastModeIndex)

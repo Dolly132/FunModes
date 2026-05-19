@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_VIPModeInfo;
+static int g_iVIPModeIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iVIPModeIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_VIPModeInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define VIPMODE_CONVAR_TIMER     0
 #define VIPMODE_CONVAR_COUNT     1
@@ -34,6 +37,9 @@ bool g_bVIP_Enabled;
 
 stock void OnPluginStart_VIPMode()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "VIPMode";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-VIPMode]{lightgreen}";
 
@@ -78,8 +84,6 @@ stock void OnPluginStart_VIPMode()
 	THIS_MODE_INFO.cvars[VIPMODE_CONVAR_TOGGLE].HookChange(VIPMode_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = VIPMODE_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_VIPMode()

@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_SampleInfo;
+static int g_iSampleIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iSampleIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_SampleInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define SAMPLE_CONVAR_TOGGLE 0
 
@@ -19,6 +22,9 @@ bool g_bSample_Enabled;
 
 stock void OnPluginStart_Sample()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "Sample";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-Sample]{lightgreen}";
 
@@ -37,8 +43,6 @@ stock void OnPluginStart_Sample()
 	THIS_MODE_INFO.cvars[SAMPLE_CONVAR_TOGGLE].HookChange(Sample_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = SAMPLE_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_Sample()

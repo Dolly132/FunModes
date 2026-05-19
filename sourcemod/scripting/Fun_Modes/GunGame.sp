@@ -21,10 +21,13 @@
 
 #define _FM_GunGame
 
-ModeInfo g_GunGameInfo;
+static int g_iGunGameIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iGunGameIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_GunGameInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define GUNGAME_CONVAR_PISTOLS_DAMAGE       0
 #define GUNGAME_CONVAR_SHOTGUNS_DAMAGE      1
@@ -82,6 +85,9 @@ bool g_bGunGame_Enabled;
 
 stock void OnPluginStart_GunGame()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
     THIS_MODE_INFO.name = "GunGame";
     THIS_MODE_INFO.tag = "{gold}[FunModes-GunGame]{lightgreen}";
 
@@ -147,8 +153,6 @@ stock void OnPluginStart_GunGame()
     THIS_MODE_INFO.cvars[GUNGAME_CONVAR_TOGGLE].HookChange(GunGame_OnConVarChange);
 
     THIS_MODE_INFO.enableIndex = GUNGAME_CONVAR_TOGGLE;
-
-    FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_GunGame()

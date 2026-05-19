@@ -2,10 +2,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_DoubleJumpInfo;
+static int g_iDoubleJumpIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iDoubleJumpIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_DoubleJumpInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define DOUBLEJUMP_CONVAR_BOOST     0
 #define DOUBLEJUMP_CONVAR_MAX_JUMPS 1
@@ -22,6 +25,9 @@ bool g_bDoubleJump_Enabled;
 
 stock void OnPluginStart_DoubleJump()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "DoubleJump";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-DoubleJump]{lightgreen}";
 
@@ -64,8 +70,6 @@ stock void OnPluginStart_DoubleJump()
 	THIS_MODE_INFO.cvars[DOUBLEJUMP_CONVAR_TOGGLE].HookChange(DoubleJump_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = DOUBLEJUMP_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_DoubleJump()

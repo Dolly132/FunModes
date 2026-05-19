@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_MathGameInfo;
+static int g_iMathGameIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iMathGameIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_MathGameInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define MATHGAME_CONVAR_TIMER_INTERVAL_EASY     0
 #define MATHGAME_CONVAR_TIMER_INTERVAL_MEDIUM   1
@@ -44,6 +47,9 @@ bool g_bMathGame_Enabled;
 
 stock void OnPluginStart_MathGame()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "MathGame";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-MathGame]{lightgreen}";
 
@@ -121,8 +127,6 @@ stock void OnPluginStart_MathGame()
 	THIS_MODE_INFO.cvars[MATHGAME_CONVAR_TOGGLE].HookChange(MathGame_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = MATHGAME_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_MathGame()

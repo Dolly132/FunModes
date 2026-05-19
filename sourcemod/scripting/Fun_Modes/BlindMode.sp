@@ -16,10 +16,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_BlindModeInfo;
+static int g_iBlindModeIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iBlindModeIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_BlindModeInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define BLINDMODE_CONVAR_TIMER_INTERVAL	0
 #define BLINDMODE_CONVAR_PERCENTAGE		1
@@ -41,6 +44,9 @@ bool g_bBlindMode_Enabled;
 
 stock void OnPluginStart_BlindMode()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "BlindMode";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-BlindMode]{lightgreen}";
 	
@@ -91,8 +97,6 @@ stock void OnPluginStart_BlindMode()
 	THIS_MODE_INFO.cvars[BLINDMODE_CONVAR_TOGGLE].HookChange(BlindMode_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = BLINDMODE_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_BlindMode()

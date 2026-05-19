@@ -17,10 +17,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_ChaosWeaponsInfo;
+static int g_iChaosWeaponsIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iChaosWeaponsIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_ChaosWeaponsInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define CHAOSWEAPONS_CONVAR_TIMER_INTERVAL	0
 #define CHAOSWEAPONS_CONVAR_KNOCKBACK		1
@@ -50,6 +53,9 @@ bool g_bChaosWeapons_Enabled;
 
 stock void OnPluginStart_ChaosWeapons()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "ChaosWeapons";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-ChaosWeapons]{lightgreen}";
 	
@@ -92,8 +98,6 @@ stock void OnPluginStart_ChaosWeapons()
 	THIS_MODE_INFO.cvars[CHAOSWEAPONS_CONVAR_TOGGLE].HookChange(ChaosWeapons_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = CHAOSWEAPONS_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_ChaosWeapons()
@@ -142,7 +146,7 @@ stock void OnMapStart_ChaosWeapons() {}
 stock void OnMapEnd_ChaosWeapons()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
-	
+
 	g_hChaosWeaponsTimer = null;
 }
 
@@ -187,17 +191,17 @@ public Action Cmd_ChaosWeaponsToggle(int client, int args)
 	}
 
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, !THIS_MODE_INFO.isOn, THIS_MODE_INFO.index);
-	
+
 	CPrintToChatAll("%s ChaosWeapons Mode is now %s!", THIS_MODE_INFO.tag, THIS_MODE_INFO.isOn ? "On" : "Off");
-	
+
 	if (THIS_MODE_INFO.isOn)
 	{
 		g_hChaosWeaponsTimer = CreateTimer(g_fChaosWeapons_TimerInterval, Timer_ChaosWeapons, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 		
 		CPrintToChatAll("%s a Random weapon will get normal knockback and the others will get their knockback nerfed every %.2f seconds!", THIS_MODE_INFO.tag, g_fChaosWeapons_TimerInterval);
-		
+
 		SetAllWeaponsKnockback(g_fChaosWeapons_Knockback, _, true);
-		
+
 		PickRandomWeapon();
 	}
 	else
@@ -205,7 +209,7 @@ public Action Cmd_ChaosWeaponsToggle(int client, int args)
 		delete g_hChaosWeaponsTimer;
 		SetAllWeaponsKnockback(_, _, _, true);
 	}
-	
+
 	return Plugin_Handled;
 }
 
@@ -223,7 +227,7 @@ public Action Cmd_ChaosWeaponsSettings(int client, int args)
 
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
-	
+
 	return Plugin_Handled;
 }
 
@@ -233,7 +237,7 @@ int Menu_ChaosWeaponsSettings(Menu menu, MenuAction action, int param1, int para
 	{
 		case MenuAction_End:
 			delete menu;
-		
+
 		case MenuAction_Cancel:
 		{
 			if (param2 == MenuCancel_ExitBack)
@@ -256,7 +260,7 @@ Action Timer_ChaosWeapons(Handle timer)
 		g_hChaosWeaponsTimer = null;
 		return Plugin_Handled;
 	}
-	
+
 	CreateTimer(1.0, Timer_ChaosWeaponsRepeat, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 	return Plugin_Continue;
 }
@@ -288,7 +292,7 @@ Action Timer_ChaosWeaponsRepeat(Handle timer)
 	{
 		if (!IsClientInGame(i))
 			continue;
-			
+	
 		SendHudText(i, msg, _, 1);
 	}
 
@@ -298,10 +302,10 @@ Action Timer_ChaosWeaponsRepeat(Handle timer)
 void PickRandomWeapon()
 {
 	int index = GetRandomInt(0, sizeof(g_ChaosWeaponsList) - 1);
-	
+
 	FormatEx(g_sChaosWeaponCurrent, sizeof(g_sChaosWeaponCurrent), "weapon_%s", g_ChaosWeaponsList[index]);
 	SetAllWeaponsKnockback(g_fChaosWeapons_Knockback, index);
-	
+
 	char msg[255];
 	FormatEx(
 		msg, sizeof(msg),
@@ -309,12 +313,12 @@ void PickRandomWeapon()
 		StrToUpper(g_ChaosWeaponsList[index]),
 		g_fChaosWeapons_TimerInterval
 	);
-	
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (!IsClientInGame(i))
 			continue;
-			
+	
 		SendHudText(i, msg, _, 1);
 		CPrintToChat(i, "%s %s", THIS_MODE_INFO.tag, msg);
 	}
@@ -324,16 +328,16 @@ stock char[] StrToUpper(const char[] buffer)
 {
 	int len = strlen(buffer);
 	char myChar[32];
-	
+
 	for (int i = 0; i < len; i++)
 	{
 		char c = buffer[i];
 		if (c >= 'a' && c <= 'z')
 			c &= ~0x20;
-			
+
 		myChar[i] = c;
 	}
-	
+
 	return myChar;
 }
 
@@ -346,10 +350,10 @@ void SetAllWeaponsKnockback(float kb = 0.0, int index = -1, bool firstTime = fal
 			ZR_SetWeaponKnockback(g_ChaosWeaponsList[i], g_fOriginalWeaponsKB[i]);
 			continue;
 		}
-		
+
 		if (firstTime)
 			g_fOriginalWeaponsKB[i] = ZR_GetWeaponKnockback(g_ChaosWeaponsList[i]);
-		
+
 		ZR_SetWeaponKnockback(g_ChaosWeaponsList[i], kb);
 	}
 }
@@ -357,53 +361,53 @@ void SetAllWeaponsKnockback(float kb = 0.0, int index = -1, bool firstTime = fal
 stock void OnPlayerRunCmdPost_ChaosWeapons(int client, int buttons, int impulse)
 {
 	#pragma unused buttons
-	
+
 	if (!THIS_MODE_INFO.isOn)
 		return;
-	
+
 	if (!IsPlayerAlive(client) || !ZR_IsClientHuman(client))
 		return;
-		
+
 	static float playersTime[MAXPLAYERS + 1];
-	
+
 	float currentTime = GetGameTime();
 	if (currentTime <= playersTime[client])
 		return;
-		
+
 	// https://github.com/ValveSoftware/source-sdk-2013/blob/7191ecc418e28974de8be3a863eebb16b974a7ef/src/game/server/player.cpp#L6073
 	if (impulse == 100)
 	{	
 		playersTime[client] = currentTime + 2.0;
-		
+
 		char curWeapon[sizeof(g_sChaosWeaponCurrent)];
 		strcopy(curWeapon, sizeof(curWeapon), g_sChaosWeaponCurrent);
-		
+
 		int weapon = 0; 
-		
+
 		ReplaceString(curWeapon, sizeof(curWeapon), "weapon_", "");
 		int price = ZR_GetWeaponZMarketPrice(curWeapon);
-		
+
 		int cash = GetEntProp(client, Prop_Send, "m_iAccount");
 		if (cash < price)
 		{
 			CPrintToChat(client, "%s Insufficent fund", THIS_MODE_INFO.tag);
 			return;
 		}
-		
+
 		weapon = GetPlayerWeaponSlot(client, CS_SLOT_PRIMARY);
 		if (IsValidEntity(weapon))
 		{
 			SDKHooks_DropWeapon(client, weapon);
 			RemoveEntity(weapon);
 		}
-		
+
 		weapon = GivePlayerItem(client, g_sChaosWeaponCurrent);
 		if (!IsValidEntity(weapon))
 			return;
-			
+
 		if (g_hSwitchSDKCall != null)
 			SDKCall(g_hSwitchSDKCall, client, weapon, 0);
-		
+
 		SetEntProp(client, Prop_Send, "m_iAccount", cash - price);
 	}
 }

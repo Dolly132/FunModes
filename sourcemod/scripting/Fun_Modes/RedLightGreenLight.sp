@@ -8,10 +8,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_RLGLInfo;
+static int g_iRLGLIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iRLGLIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_RLGLInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 bool g_bEnableDetecting;
 
@@ -45,6 +48,9 @@ bool g_bRLGL_Enabled;
 
 stock void OnPluginStart_RLGL()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
 	THIS_MODE_INFO.name = "RLGL";
 	THIS_MODE_INFO.tag = "{gold}[FunModes-RedLightGreenLight]{lightgreen}";
 
@@ -115,8 +121,6 @@ stock void OnPluginStart_RLGL()
 	THIS_MODE_INFO.cvars[RLGL_CONVAR_TOGGLE].HookChange(RLGL_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = RLGL_CONVAR_TOGGLE;
-
-	FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_RLGL()

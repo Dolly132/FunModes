@@ -297,7 +297,7 @@ enum WeaponAmmoGrenadeType
 * @param %6		Cvar's value type.
 */
 #define DECLARE_FM_CVAR(%1,%2,%3,%4,%5,%6) \
-		THIS_MODE_INFO.cvars[%1].modeIndex = g_iLastModeIndex; \
+		THIS_MODE_INFO.cvars[%1].modeIndex = THIS_MODE_INDEX; \
 		THIS_MODE_INFO.cvars[%1].cvarIndex = %1; \
 		THIS_MODE_INFO.cvars[%1].name = %2; \
 		THIS_MODE_INFO.cvars[%1].defaultValue = %3; \
@@ -312,11 +312,10 @@ enum WeaponAmmoGrenadeType
 * @param %1		The mode's struct.
 * @param %2		The variable to chnage.
 * @param %3		The new value to assign to the variable.
-* @param %4		The mode's index.
+* @param %4		The mode's index. (Unused)
 */
 #define CHANGE_MODE_INFO(%1,%2,%3,%4) \
-		%1.%2 = %3; \
-		g_ModesInfo[%4].%2 = %3
+		%1.%2 = %3
 
 /*
 * Retrieves a cvar's value. (Using the cvar's enum struct)
@@ -370,8 +369,8 @@ enum WeaponAmmoGrenadeType
 * @param %3		The index of the enable/disable cvar relative to the mode.
 */
 #define FUNMODES_REGISTER_MODE() \
-		THIS_MODE_INFO.index = g_iLastModeIndex++; \
-		g_ModesInfo[THIS_MODE_INFO.index] = THIS_MODE_INFO
+		THIS_MODE_INDEX = g_iLastModeIndex++; \
+		THIS_MODE_INFO.index = THIS_MODE_INDEX
 
 #include "Fun_Modes/Core/ModesInclude.sp"
 #include "Fun_Modes/Core/ModesDefinition.sp"

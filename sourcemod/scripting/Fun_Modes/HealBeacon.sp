@@ -8,10 +8,15 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_HBInfo;
+// This must be static (To avoid confusion between other modes),
+// but since HealBeacon requires a menus include file, we can make it as instance.
+int g_iHealBeaconIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iHealBeaconIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_HBInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 bool g_bIsBetterDamageModeOn;
 
@@ -80,6 +85,9 @@ BeaconPlayers g_BeaconPlayersData[MAXPLAYERS + 1];
 /* Called in OnPluginStart */
 stock void OnPluginStart_HealBeacon()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
     THIS_MODE_INFO.name = "HealBeacon";
     THIS_MODE_INFO.tag = "{gold}[FunModes-HealBeacon]{lightgreen}";
 
@@ -143,8 +151,6 @@ stock void OnPluginStart_HealBeacon()
     THIS_MODE_INFO.cvars[HB_CONVAR_TOGGLE].HookChange(HealBeacon_OnConVarChange);
 
     THIS_MODE_INFO.enableIndex = HB_CONVAR_TOGGLE;
-
-    FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_HealBeacon()

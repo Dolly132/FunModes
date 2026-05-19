@@ -9,10 +9,13 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-ModeInfo g_RealityShiftInfo;
+static int g_iRealityShiftIndex = -1;
+
+#undef THIS_MODE_INDEX
+#define THIS_MODE_INDEX g_iRealityShiftIndex
 
 #undef THIS_MODE_INFO
-#define THIS_MODE_INFO g_RealityShiftInfo
+#define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
 #define REALITYSHIFT_CONVAR_TIMER_INTERVAL 0
 #define REALITYSHIFT_CONVAR_MODE 1
@@ -29,6 +32,9 @@ bool g_bRealityShift_Enabled;
 
 stock void OnPluginStart_RealityShift()
 {
+	// Important, this must be first before filling any other mode info!
+	FUNMODES_REGISTER_MODE();
+
     THIS_MODE_INFO.name = "RealityShift";
     THIS_MODE_INFO.tag = "{gold}[FunModes-RealityShift]{lightgreen}";
 
@@ -57,8 +63,6 @@ stock void OnPluginStart_RealityShift()
     THIS_MODE_INFO.cvars[REALITYSHIFT_CONVAR_TOGGLE].HookChange(RealityShift_OnConVarChange);
 
     THIS_MODE_INFO.enableIndex = REALITYSHIFT_CONVAR_TOGGLE;
-
-    FUNMODES_REGISTER_MODE();
 }
 
 void InitCvarsValues_RealityShift()
