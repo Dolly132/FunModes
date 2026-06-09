@@ -1,6 +1,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_DamageGame
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "DamageGame"
+
 static int g_iDamageGameIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -26,13 +31,13 @@ int g_iDamageGame_Mode;
 bool g_bDamageGame_Enabled;
 
 /* CALLED on Plugin Start */
-stock void OnPluginStart_DamageGame()
+public void OnPluginStart_DamageGame()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "DamageGame";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-DamageGame]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	/* ADMIN COMMANDS */
 	RegAdminCmd("sm_fm_damage", Cmd_DamageGameToggle, ADMFLAG_CONVARS, "Enable/Disable Damage Game mode.");
@@ -71,7 +76,7 @@ stock void OnPluginStart_DamageGame()
 	THIS_MODE_INFO.enableIndex = DAMAGEGAME_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_DamageGame()
+public void InitCvarsValues_DamageGame()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -126,15 +131,14 @@ void DamageGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldVal
 	}
 }
 
-stock void OnMapStart_DamageGame() {}
-stock void OnMapEnd_DamageGame()
+public void OnMapEnd_DamageGame()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
 	g_hDamageGameTimer = null;
 }
 
-stock void OnClientPutInServer_DamageGame(int client)
+public void OnClientPutInServer_DamageGame(int client)
 {
 	if (g_bSDKHook_OnTakeDamagePost[client])
 		return;
@@ -143,7 +147,7 @@ stock void OnClientPutInServer_DamageGame(int client)
 	g_bSDKHook_OnTakeDamagePost[client] = true;
 }
 
-stock void OnClientDisconnect_DamageGame(int client)
+public void OnClientDisconnect_DamageGame(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -151,7 +155,7 @@ stock void OnClientDisconnect_DamageGame(int client)
 	g_iDealtDamage[client] = -1;
 }
 
-stock void ZR_OnClientInfected_DamageGame(int client)
+public void ZR_OnClientInfected_DamageGame(int client)
 {
 	#pragma unused client
 	if (!THIS_MODE_INFO.isOn)
@@ -161,7 +165,7 @@ stock void ZR_OnClientInfected_DamageGame(int client)
 		DamageGame_StartTimers();
 }
 
-stock void Event_RoundStart_DamageGame()
+public void Event_RoundStart_DamageGame()
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -172,18 +176,7 @@ stock void Event_RoundStart_DamageGame()
 	delete g_hDamageGameTimer;
 }
 
-stock void Event_RoundEnd_DamageGame() {}
-stock void Event_PlayerSpawn_DamageGame(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_DamageGame(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_DamageGame(int client)
+public void Event_PlayerDeath_DamageGame(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -191,7 +184,7 @@ stock void Event_PlayerDeath_DamageGame(int client)
 	g_iDealtDamage[client] = -1;
 }
 
-stock void OnTakeDamagePost_DamageGame(int victim, int attacker, float damage)
+public void OnTakeDamagePost_DamageGame(int victim, int attacker, float damage)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -203,13 +196,6 @@ stock void OnTakeDamagePost_DamageGame(int victim, int attacker, float damage)
 		return;
 
 	g_iDealtDamage[attacker] += RoundToNearest(damage);
-}
-
-stock void OnWeaponEquip_DamageGame(int client, int weapon, Action &result)
-{
-	#pragma unused client
-	#pragma unused weapon
-	#pragma unused result
 }
 
 public Action Cmd_DamageGameToggle(int client, int args)

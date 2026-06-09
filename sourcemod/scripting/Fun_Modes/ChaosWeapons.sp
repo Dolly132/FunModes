@@ -17,6 +17,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_ChaosWeapons
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "ChaosWeapons"
+
 static int g_iChaosWeaponsIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -51,13 +56,13 @@ int g_iChaosWeapons_Countdown;
 
 bool g_bChaosWeapons_Enabled;
 
-stock void OnPluginStart_ChaosWeapons()
+public void OnPluginStart_ChaosWeapons()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "ChaosWeapons";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-ChaosWeapons]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 	
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
@@ -100,7 +105,7 @@ stock void OnPluginStart_ChaosWeapons()
 	THIS_MODE_INFO.enableIndex = CHAOSWEAPONS_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_ChaosWeapons()
+public void InitCvarsValues_ChaosWeapons()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -142,44 +147,11 @@ void ChaosWeapons_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldV
 	}
 }
 
-stock void OnMapStart_ChaosWeapons() {}
-stock void OnMapEnd_ChaosWeapons()
+public void OnMapEnd_ChaosWeapons()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
 	g_hChaosWeaponsTimer = null;
-}
-
-stock void OnClientPutInServer_ChaosWeapons(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_ChaosWeapons(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_ChaosWeapons(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_ChaosWeapons() {}
-stock void Event_RoundEnd_ChaosWeapons() {}
-stock void Event_PlayerSpawn_ChaosWeapons(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_ChaosWeapons(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_ChaosWeapons(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_ChaosWeaponsToggle(int client, int args)
@@ -358,7 +330,7 @@ void SetAllWeaponsKnockback(float kb = 0.0, int index = -1, bool firstTime = fal
 	}
 }
 
-stock void OnPlayerRunCmdPost_ChaosWeapons(int client, int buttons, int impulse)
+public void OnPlayerRunCmdPost_ChaosWeapons(int client, int buttons, int impulse)
 {
 	#pragma unused buttons
 

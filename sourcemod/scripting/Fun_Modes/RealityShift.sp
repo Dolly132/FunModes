@@ -9,6 +9,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_RealityShift
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "RealityShift"
+
 static int g_iRealityShiftIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -30,13 +35,13 @@ float g_fRealityShift_TimerInterval;
 int g_iRealityShift_Mode;
 bool g_bRealityShift_Enabled;
 
-stock void OnPluginStart_RealityShift()
+public void OnPluginStart_RealityShift()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-    THIS_MODE_INFO.name = "RealityShift";
-    THIS_MODE_INFO.tag = "{gold}[FunModes-RealityShift]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
     RegAdminCmd("sm_fm_rs", Cmd_RealityShiftToggle, ADMFLAG_CONVARS, "Turn RealityShift Mode On/Off");
     RegAdminCmd("sm_realityshift_settings", Cmd_RealityShiftSettings, ADMFLAG_CONVARS, "Open RealityShift Sttings Menu");
@@ -65,7 +70,7 @@ stock void OnPluginStart_RealityShift()
     THIS_MODE_INFO.enableIndex = REALITYSHIFT_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_RealityShift()
+public void InitCvarsValues_RealityShift()
 {
     int modeIndex = THIS_MODE_INFO.index;
 
@@ -114,27 +119,25 @@ void RealityShift_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldV
     }
 }
 
-stock void OnMapStart_RealityShift() {}
-
-stock void OnMapEnd_RealityShift()
+public void OnMapEnd_RealityShift()
 {
     CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
     g_hRealityShiftTimer = null;
 }
 
-stock void OnClientPutInServer_RealityShift(int client)
+public void OnClientPutInServer_RealityShift(int client)
 {
     g_iRealityShiftAssigned[client] = 0;
     g_bRealityShiftSwapped[client] = false;
 }
 
-stock void OnClientDisconnect_RealityShift(int client)
+public void OnClientDisconnect_RealityShift(int client)
 {
     g_iRealityShiftAssigned[client] = 0;
     g_bRealityShiftSwapped[client] = false;
 }
 
-stock void ZR_OnClientInfected_RealityShift(int client)
+public void ZR_OnClientInfected_RealityShift(int client)
 {
     #pragma unused client
 
@@ -148,23 +151,6 @@ stock void ZR_OnClientInfected_RealityShift(int client)
         if (g_iRealityShift_Mode == 1)
             RealityShift_AssignPlayers(true);
     }
-}
-
-stock void Event_RoundStart_RealityShift() {}
-stock void Event_RoundEnd_RealityShift() {}
-stock void Event_PlayerSpawn_RealityShift(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_RealityShift(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_RealityShift(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_RealityShiftToggle(int client, int args)

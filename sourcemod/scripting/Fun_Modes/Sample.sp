@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_Sample
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "Sample"
+
 static int g_iSampleIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -20,13 +25,13 @@ static int g_iSampleIndex = -1;
 
 bool g_bSample_Enabled;
 
-stock void OnPluginStart_Sample()
+public void OnPluginStart_Sample()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "Sample";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-Sample]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
@@ -45,7 +50,7 @@ stock void OnPluginStart_Sample()
 	THIS_MODE_INFO.enableIndex = SAMPLE_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_Sample()
+public void InitCvarsValues_Sample()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -67,40 +72,40 @@ void Sample_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, 
 	}
 }
 
-stock void OnMapStart_Sample() {}
-stock void OnMapEnd_Sample()
+public void OnMapStart_Sample() {}
+public void OnMapEnd_Sample()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 }
 
-stock void OnClientPutInServer_Sample(int client)
+public void OnClientPutInServer_Sample(int client)
 {
 	#pragma unused client
 }
 
-stock void OnClientDisconnect_Sample(int client)
+public void OnClientDisconnect_Sample(int client)
 {
 	#pragma unused client
 }
 
-stock void ZR_OnClientInfected_Sample(int client)
+public void ZR_OnClientInfected_Sample(int client)
 {
 	#pragma unused client
 }
 
-stock void Event_RoundStart_Sample() {}
-stock void Event_RoundEnd_Sample() {}
-stock void Event_PlayerSpawn_Sample(int client)
+public void Event_RoundStart_Sample() {}
+public void Event_RoundEnd_Sample() {}
+public void Event_PlayerSpawn_Sample(int client)
 {
 	#pragma unused client
 }
 
-stock void Event_PlayerTeam_Sample(Event event)
+public void Event_PlayerTeam_Sample(Event event)
 {
 	#pragma unused event
 }
 
-stock void Event_PlayerDeath_Sample(int client)
+public void Event_PlayerDeath_Sample(int client)
 {
 	#pragma unused client
 }

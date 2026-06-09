@@ -227,30 +227,6 @@ enum struct FM_ConVar
 	}
 }
 
-enum struct ModeInfo 
-{
-	int index;
-	char name[32];
-	char tag[64];
-	FM_ConVar cvars[MAX_CVARS_NUM];
-	bool isOn;
-	int enableIndex;
-
-	int GetCvarsCount()
-	{
-		int count;
-		for (int i = 0; i < sizeof(ModeInfo::cvars); i++)
-		{
-			if (this.cvars[i].name[0] == '\0')
-				continue;
-
-			count++;
-		}
-
-		return count;
-	}
-}
-
 enum struct FM_Color
 {
 	char name[10];
@@ -280,11 +256,40 @@ enum WeaponAmmoGrenadeType
 #define SMOKEGRENADE		13
 
 #define GET_GRENADES_COUNT(%1,%2)		GetEntData(%1, g_iNetPropAmmoIndex + (%2 * 4))
-#define SET_GRENADES_COUNT(%1,%2,%3)	SetEntData(%1, g_iNetPropAmmoIndex + (%2 * 4), %3, _, true)			
+#define SET_GRENADES_COUNT(%1,%2,%3)	SetEntData(%1, g_iNetPropAmmoIndex + (%2 * 4), %3, _, true)
 
 /* Modes Management Macros */
+#define THIS_MODE_NAME
 #define THIS_MODE_INFO
-#define NULL -1
+
+/* Modes Forwards Include */
+#include "Forwards.sp"
+
+enum struct ModeInfo 
+{
+	int index;
+	char name[32];
+	char tag[64];
+	FM_ConVar cvars[MAX_CVARS_NUM];
+	bool isOn;
+	int enableIndex;
+
+	FM_Forwards forwards;
+
+	int GetCvarsCount()
+	{
+		int count;
+		for (int i = 0; i < sizeof(ModeInfo::cvars); i++)
+		{
+			if (this.cvars[i].name[0] == '\0')
+				continue;
+
+			count++;
+		}
+
+		return count;
+	}
+}
 
 /*
 * Declares a FunModes cvar related to the current mode the compiler is reading.
@@ -370,7 +375,7 @@ enum WeaponAmmoGrenadeType
 */
 #define FUNMODES_REGISTER_MODE() \
 		THIS_MODE_INDEX = g_iLastModeIndex++; \
-		THIS_MODE_INFO.index = THIS_MODE_INDEX
+		THIS_MODE_INFO.index = THIS_MODE_INDEX; \
+		VALIDATE_FM_FORWARDS()
 
-#include "Fun_Modes/Core/ModesInclude.sp"
-#include "Fun_Modes/Core/ModesDefinition.sp"
+#include "ModesInclude.sp"

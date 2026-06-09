@@ -30,6 +30,9 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "CrazyShop"
+
 static int g_iCrazyShopIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -209,13 +212,13 @@ bool g_bCrazyShop_Enabled;
 
 float g_fCrazyShop_SlowBeaconRadius;
 
-stock void OnPluginStart_CrazyShop()
+public void OnPluginStart_CrazyShop()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "CrazyShop";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-CrazyShop]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
@@ -270,7 +273,7 @@ stock void OnPluginStart_CrazyShop()
 	THIS_MODE_INFO.enableIndex = CRAZYSHOP_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_CrazyShop()
+public void InitCvarsValues_CrazyShop()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -314,19 +317,19 @@ void CrazyShop_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValu
 	}
 }
 
-stock void OnMapStart_CrazyShop()
+public void OnMapStart_CrazyShop()
 {
 	PrecacheModel(PROP_MODEL);
 }
 
-stock void OnMapEnd_CrazyShop()
+public void OnMapEnd_CrazyShop()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
 	g_iCrazyShopProps = 0;
 }
 
-stock void OnClientPutInServer_CrazyShop(int client)
+public void OnClientPutInServer_CrazyShop(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -344,7 +347,7 @@ stock void OnClientPutInServer_CrazyShop(int client)
 	}
 }
 
-stock void OnClientDisconnect_CrazyShop(int client)
+public void OnClientDisconnect_CrazyShop(int client)
 {
 	if (!THIS_MODE_INFO.isOn || THIS_MODE_DB == null)
 		return;
@@ -368,12 +371,7 @@ stock void OnClientDisconnect_CrazyShop(int client)
 	PLAYER_RESET(client);
 }
 
-stock void ZR_OnClientInfected_CrazyShop(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_CrazyShop()
+public void Event_RoundStart_CrazyShop()
 {
 	g_iCrazyShopProps = 0;
 
@@ -381,25 +379,8 @@ stock void Event_RoundStart_CrazyShop()
 		PLAYER_RESET_TEMP_VARS(i);
 }
 
-stock void Event_RoundEnd_CrazyShop() {}
-
-stock void Event_PlayerSpawn_CrazyShop(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_CrazyShop(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_CrazyShop(int client)
-{
-	#pragma unused client
-}
-
 // CrazyShop is the only mode that hooks this event, so it's fine
-stock void Event_WeaponFire_CrazyShop(Event event, const char[] name, bool dontBroadcast)
+public void Event_WeaponFire_CrazyShop(Event event, const char[] name, bool dontBroadcast)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -432,7 +413,7 @@ stock void Event_WeaponFire_CrazyShop(Event event, const char[] name, bool dontB
 	SetEntProp(weapon, Prop_Send, "m_iClip1", clip1 + toAdd);
 }
 
-stock void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
+public void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -458,14 +439,7 @@ stock void OnTakeDamagePost_CrazyShop(int victim, int attacker, float damage)
 	}
 }
 
-stock void OnWeaponEquip_CrazyShop(int client, int weapon, Action &result)
-{
-	#pragma unused client
-	#pragma unused weapon
-	#pragma unused result
-}
-
-stock void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Action &result)
+public void OnTakeDamage_CrazyShop(int victim, int &attacker, float &damage, Action &result)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -572,7 +546,7 @@ void CrazyShop_CheckIgnite(int userid)
 	}
 }
 
-stock void OnPlayerRunCmdPost_CrazyShop(int client, int buttons, int impulse)
+public void OnPlayerRunCmdPost_CrazyShop(int client, int buttons, int impulse)
 {
 	#pragma unused buttons
 

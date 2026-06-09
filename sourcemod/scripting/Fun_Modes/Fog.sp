@@ -1,6 +1,17 @@
+/*
+    (). FunModes V2:
+
+    @file           Fog.sp
+    @Usage          Functions for the Fog Mode.
+*/
 
 #pragma semicolon 1
 #pragma newdecls required
+
+#define _FM_Fog
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "Fog"
 
 static int g_iFogIndex = -1;
 
@@ -40,13 +51,13 @@ int g_iFogEntity = -1;
 
 bool g_bFog_Enabled;
 
-stock void OnPluginStart_Fog()
+public void OnPluginStart_Fog()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "Fog";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-FOG]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_fog", Cmd_FogToggle, ADMFLAG_CONVARS);
 	RegAdminCmd("sm_fogmode", Cmd_FogSettings, ADMFLAG_CONVARS);
@@ -64,7 +75,7 @@ stock void OnPluginStart_Fog()
 	THIS_MODE_INFO.enableIndex = FOG_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_Fog()
+public void InitCvarsValues_Fog()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -89,35 +100,20 @@ void Fog_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, con
 	}
 }
 
-stock void OnMapStart_Fog()
+public void OnMapStart_Fog()
 {
 	g_FogData.fogStart 	= 50.0;
 	g_FogData.fogEnd 	= 250.0;
 	g_iFogEntity = -1;
 }
 
-stock void OnMapEnd_Fog()
+public void OnMapEnd_Fog()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 	g_iFogEntity = -1;
 }
 
-stock void OnClientPutInServer_Fog(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_Fog(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_Fog(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_Fog()
+public void Event_RoundStart_Fog()
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -139,23 +135,12 @@ stock void Event_RoundStart_Fog()
 	CreateFogEntity();
 }
 
-stock void Event_RoundEnd_Fog() {}
-stock void Event_PlayerSpawn_Fog(int client)
+public void Event_PlayerSpawn_Fog(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
 		
 	CreateTimer(1.0, PlayerSpawn_Timer, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-}
-
-stock void Event_PlayerTeam_Fog(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_Fog(int client)
-{
-	#pragma unused client
 }
 
 Action PlayerSpawn_Timer(Handle timer, int userid)
@@ -172,7 +157,7 @@ Action PlayerSpawn_Timer(Handle timer, int userid)
 	return Plugin_Continue;
 }
 
-stock void CreateFogEntity()
+public void CreateFogEntity()
 {
 	/* CHECK FOR ANY FOG MAP HAS */
 	int entity = -1;
@@ -216,7 +201,7 @@ stock void CreateFogEntity()
 	}
 }
 
-stock void AcceptFogInput(int mode)
+public void AcceptFogInput(int mode)
 {
 	if (!IsValidEntity(g_iFogEntity))
 		return;
@@ -252,7 +237,7 @@ stock void AcceptFogInput(int mode)
 	}
 }
 
-stock void Fog_DisplaySettingsMenu(int client)
+public void Fog_DisplaySettingsMenu(int client)
 {
 	Menu menu = new Menu(FogSettings_Handler);
 
@@ -297,7 +282,7 @@ public int FogSettings_Handler(Menu menu, MenuAction action, int param1, int par
 	return 0;
 }
 
-stock void Fog_DisplayColorsMenu(int client)
+public void Fog_DisplayColorsMenu(int client)
 {
 	Menu menu = new Menu(FogColorsMenu_Handler);
 

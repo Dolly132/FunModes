@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_RLGL
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "RLGL"
+
 static int g_iRLGLIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -46,13 +51,13 @@ float g_fRLGL_WarningTime;
 float g_fRLGL_ZombieSpeed;
 bool g_bRLGL_Enabled;
 
-stock void OnPluginStart_RLGL()
+public void OnPluginStart_RLGL()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "RLGL";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-RedLightGreenLight]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_rlgl", Cmd_RLGLToggle, ADMFLAG_CONVARS, "Enable/Disable RedLightGreenLight mode.");
 	RegAdminCmd("sm_rlgl_settings", Cmd_RLGLSettings, ADMFLAG_CONVARS, "Open RLGL Settings Menu");
@@ -123,7 +128,7 @@ stock void OnPluginStart_RLGL()
 	THIS_MODE_INFO.enableIndex = RLGL_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_RLGL()
+public void InitCvarsValues_RLGL()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -178,7 +183,7 @@ void RLGL_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, co
 	}
 }
 
-stock void OnMapStart_RLGL()
+public void OnMapStart_RLGL()
 {
 	countDownPath = _FUNMODES_CVAR_GET_VALUE(THIS_MODE_INFO.index, RLGL_CONVAR_COUNTDOWN_FOLDER, String);
 	PrintToChatAll("countdown path: %s", countDownPath);
@@ -197,7 +202,7 @@ stock void OnMapStart_RLGL()
 	}
 }
 
-stock void OnMapEnd_RLGL()
+public void OnMapEnd_RLGL()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
@@ -206,17 +211,12 @@ stock void OnMapEnd_RLGL()
 	g_hRLGLWarningTimer = null;
 }
 
-stock void OnClientPutInServer_RLGL(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_RLGL(int client)
+public void OnClientDisconnect_RLGL(int client)
 {
 	g_fOriginalSpeed[client] = 0.0;
 }
 
-stock void ZR_OnClientInfected_RLGL(int client)
+public void ZR_OnClientInfected_RLGL(int client)
 {
 	if (!(THIS_MODE_INFO.isOn && g_bEnableDetecting))
 		return;
@@ -228,7 +228,7 @@ stock void ZR_OnClientInfected_RLGL(int client)
 	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", g_fRLGL_ZombieSpeed);
 }
 
-stock void Event_RoundStart_RLGL()
+public void Event_RoundStart_RLGL()
 {
 	delete g_hRLGLWarningTimer;
 	delete g_hRLGLTimer;
@@ -236,23 +236,6 @@ stock void Event_RoundStart_RLGL()
 
 	if (THIS_MODE_INFO.isOn)
 		StartRLGLTimer();
-}
-
-stock void Event_RoundEnd_RLGL() {}
-
-stock void Event_PlayerSpawn_RLGL(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_RLGL(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_RLGL(int client)
-{
-	#pragma unused client
 }
 
 void ApplyFade(const char[] sColor)
@@ -468,7 +451,7 @@ Action RLGL_Detect_Time_Timer(Handle timer)
 	return Plugin_Continue;
 }
 
-stock void SetZombiesSpeed(float val)
+public void SetZombiesSpeed(float val)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -487,7 +470,7 @@ stock void SetZombiesSpeed(float val)
 	}
 }
 
-stock void StartRLGLTimer()
+public void StartRLGLTimer()
 {
 	float time = 10.0;
 

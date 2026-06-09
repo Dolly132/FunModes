@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_VIPMode
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "VIPMode"
+
 static int g_iVIPModeIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -35,13 +40,13 @@ bool g_bVIP_LaserException;
 int g_iVIP_Max;
 bool g_bVIP_Enabled;
 
-stock void OnPluginStart_VIPMode()
+public void OnPluginStart_VIPMode()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "VIPMode";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-VIPMode]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_vipmode", Cmd_VIPModeToggle, ADMFLAG_CONVARS, "Turn VIPMode On/Off");
 	RegAdminCmd("sm_vipmode_setvip", Cmd_SetVIP, ADMFLAG_CONVARS, "Set a player as VIP");
@@ -86,7 +91,7 @@ stock void OnPluginStart_VIPMode()
 	THIS_MODE_INFO.enableIndex = VIPMODE_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_VIPMode()
+public void InitCvarsValues_VIPMode()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -124,8 +129,7 @@ void VIPMode_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue,
 	}
 }
 
-stock void OnMapStart_VIPMode() {}
-stock void OnMapEnd_VIPMode()
+public void OnMapEnd_VIPMode()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
@@ -138,7 +142,7 @@ stock void OnMapEnd_VIPMode()
 	}
 }
 
-stock void OnClientPutInServer_VIPMode(int client)
+public void OnClientPutInServer_VIPMode(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -150,7 +154,7 @@ stock void OnClientPutInServer_VIPMode(int client)
 	g_bSDKHook_OnTakeDamage[client] = true;
 }
 
-stock void OnClientDisconnect_VIPMode(int client)
+public void OnClientDisconnect_VIPMode(int client)
 {
 	delete g_hVIPBeaconTimer[client];
 	
@@ -163,12 +167,7 @@ stock void OnClientDisconnect_VIPMode(int client)
 	RemoveClientVIP(client, true, "VIPMode_VIPDeathDisconnect");
 }
 
-stock void ZR_OnClientInfected_VIPMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_VIPMode()
+public void Event_RoundStart_VIPMode()
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -187,13 +186,7 @@ stock void Event_RoundStart_VIPMode()
 	g_hVIPRoundStartTimer = CreateTimer(g_fVIP_Timer, VIPRoundStart_Timer, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
-stock void Event_RoundEnd_VIPMode() {}
-stock void Event_PlayerSpawn_VIPMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_VIPMode(Event event)
+public void Event_PlayerTeam_VIPMode(Event event)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -207,7 +200,7 @@ stock void Event_PlayerTeam_VIPMode(Event event)
 		RemoveClientVIP(client, true, "VIPMode_VIPDeathSpec");
 }
 
-stock void Event_PlayerDeath_VIPMode(int client)
+public void Event_PlayerDeath_VIPMode(int client)
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -226,14 +219,7 @@ stock void Event_PlayerDeath_VIPMode(int client)
 	RemoveClientVIP(client, true, "VIPMode_VIPDeath");
 }
 
-stock void OnTakeDamagePost_VIPMode(int victim, int attacker, float damage)
-{
-	#pragma unused victim
-	#pragma unused attacker
-	#pragma unused damage
-}
-
-stock void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &result)
+public void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &result)
 {
 	#pragma unused result
 
@@ -273,13 +259,6 @@ stock void OnTakeDamage_VIPMode(int victim, int attacker, float damage, Action &
 	g_bDiedFromLaser[victim] = false;
 	if (damage > GetClientHealth(victim))
 		g_bDiedFromLaser[victim] = true;
-}
-
-stock void OnWeaponEquip_VIPMode(int client, int weapon, Action &result)
-{
-	#pragma unused client
-	#pragma unused weapon
-	#pragma unused result
 }
 
 public Action Cmd_VIPModeToggle(int client, int args)
@@ -329,7 +308,7 @@ Action VIPRoundStart_Timer(Handle timer)
 	return Plugin_Stop;
 }
 
-stock void RemoveClientVIP(int client, bool kill, const char[] translation = "")
+void RemoveClientVIP(int client, bool kill, const char[] translation = "")
 {
 	g_bIsVIP[client] = false;
 	delete g_hVIPBeaconTimer[client];
@@ -345,7 +324,7 @@ stock void RemoveClientVIP(int client, bool kill, const char[] translation = "")
 	}
 }
 
-stock void VIP_PickRandom()
+void VIP_PickRandom()
 {
 	int players[MAXPLAYERS + 1];
 	int count;

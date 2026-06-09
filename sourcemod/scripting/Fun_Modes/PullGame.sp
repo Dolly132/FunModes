@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_PullGame
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "PullGame"
+
 static int g_iPullGameIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -39,13 +44,13 @@ bool g_bPullGame_Enabled;
 
 Handle g_hPullGameTimer;
 
-stock void OnPluginStart_PullGame()
+public void OnPluginStart_PullGame()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "PullGame";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-PullGame]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_pullgame", Cmd_PullGameToggle, ADMFLAG_CONVARS, "Turn PullGame Mode On/Off");
 	RegAdminCmd("sm_pullgame_settings", Cmd_PullGameSettings, ADMFLAG_CONVARS, "Open PullGame Sttings Menu");
@@ -95,7 +100,7 @@ stock void OnPluginStart_PullGame()
 	THIS_MODE_INFO.enableIndex = PULLGAME_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_PullGame()
+public void InitCvarsValues_PullGame()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -137,19 +142,17 @@ void PullGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue
 	}
 }
 
-stock void OnMapStart_PullGame() {}
-
-stock void OnMapEnd_PullGame()
+public void OnMapEnd_PullGame()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 }
 
-stock void OnClientPutInServer_PullGame(int client)
+public void OnClientPutInServer_PullGame(int client)
 {
 	PullGame_ResetVariablesClient(client);
 }
 
-stock void OnClientDisconnect_PullGame(int client)
+public void OnClientDisconnect_PullGame(int client)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -160,7 +163,7 @@ stock void OnClientDisconnect_PullGame(int client)
 	PullGame_ResetVariablesClient(client);
 }
 
-stock void ZR_OnClientInfected_PullGame(int client)
+public void ZR_OnClientInfected_PullGame(int client)
 {
 	#pragma unused client
 
@@ -171,26 +174,9 @@ stock void ZR_OnClientInfected_PullGame(int client)
 		PullGame_ToggleTimer(true);
 }
 
-stock void Event_RoundStart_PullGame()
+public void Event_RoundStart_PullGame()
 {
 	PullGame_ResetVariables();
-}
-
-stock void Event_RoundEnd_PullGame() {}
-
-stock void Event_PlayerSpawn_PullGame(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_PullGame(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_PullGame(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_PullGameToggle(int client, int args)
@@ -379,7 +365,7 @@ int PullGame_GetRandomFromArray(int[] arr, int len, int &client)
 	return index;
 }
 
-stock void OnPlayerRunCmdPost_PullGame(int client, int buttons, int impulse)
+public void OnPlayerRunCmdPost_PullGame(int client, int buttons, int impulse)
 {
 	#pragma unused buttons
 	if (!THIS_MODE_INFO.isOn)

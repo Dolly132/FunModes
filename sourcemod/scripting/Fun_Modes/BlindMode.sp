@@ -16,6 +16,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_BlindMode
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "BlindMode"
+
 static int g_iBlindModeIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -42,13 +47,13 @@ int g_iBlindMode_BlindTime;
 
 bool g_bBlindMode_Enabled;
 
-stock void OnPluginStart_BlindMode()
+public void OnPluginStart_BlindMode()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "BlindMode";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-BlindMode]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 	
 	/* COMMANDS */
 	/* THESE ARE THE STANDARD COMMANDS THAT ALL MODES SHOULD HAVE */
@@ -99,7 +104,7 @@ stock void OnPluginStart_BlindMode()
 	THIS_MODE_INFO.enableIndex = BLINDMODE_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_BlindMode()
+public void InitCvarsValues_BlindMode()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -147,47 +152,20 @@ void BlindMode_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValu
 	}
 }
 
-stock void OnMapStart_BlindMode() {}
-stock void OnMapEnd_BlindMode()
+public void OnMapEnd_BlindMode()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 	
 	g_hBlindModeTimer = null;
 }
 
-stock void OnClientPutInServer_BlindMode(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_BlindMode(int client)
-{
-	g_bHasFlash[client] = false;
-}
-
-stock void ZR_OnClientInfected_BlindMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_BlindMode()
+public void Event_RoundStart_BlindMode()
 {
 	for (int i = 1; i <= MaxClients; i++)
 		g_bHasFlash[i] = false;
 }
 
-stock void Event_RoundEnd_BlindMode() {}
-stock void Event_PlayerSpawn_BlindMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_BlindMode(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_BlindMode(int client)
+public void Event_PlayerDeath_BlindMode(int client)
 {
 	g_bHasFlash[client] = false;
 }

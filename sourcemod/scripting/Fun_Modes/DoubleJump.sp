@@ -2,6 +2,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_DoubleJump
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "DoubleJump"
+
 static int g_iDoubleJumpIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -23,13 +28,13 @@ bool g_bDoubleJump_Humans;
 bool g_bDoubleJump_Zombies;
 bool g_bDoubleJump_Enabled;
 
-stock void OnPluginStart_DoubleJump()
+public void OnPluginStart_DoubleJump()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "DoubleJump";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-DoubleJump]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_doublejump", Cmd_DoubleJumpToggle, ADMFLAG_CONVARS);
 	RegAdminCmd("sm_doublejump_settings", Cmd_DoubleJumpSettings, ADMFLAG_CONFIG);
@@ -72,7 +77,7 @@ stock void OnPluginStart_DoubleJump()
 	THIS_MODE_INFO.enableIndex = DOUBLEJUMP_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_DoubleJump()
+public void InitCvarsValues_DoubleJump()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -125,42 +130,9 @@ void DoubleJump_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldVal
 	}
 }
 
-stock void OnMapStart_DoubleJump() {}
-stock void OnMapEnd_DoubleJump()
+public void OnMapEnd_DoubleJump()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
-}
-
-stock void OnClientPutInServer_DoubleJump(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_DoubleJump(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_DoubleJump(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_DoubleJump() {}
-stock void Event_RoundEnd_DoubleJump() {}
-stock void Event_PlayerSpawn_DoubleJump(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_DoubleJump(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_DoubleJump(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_DoubleJumpToggle(int client, int args)
@@ -192,7 +164,7 @@ public Action Cmd_DoubleJumpToggle(int client, int args)
 	return Plugin_Handled;
 }
 
-void OnPlayerRunCmdPost_DoubleJump(int client, int buttons, int impulse)
+public void OnPlayerRunCmdPost_DoubleJump(int client, int buttons, int impulse)
 {
 	#pragma unused impulse
 
@@ -223,7 +195,7 @@ void OnPlayerRunCmdPost_DoubleJump(int client, int buttons, int impulse)
 	wasJump[client] = pressingJump;
 }
 
-stock void ApplyNewJump(int client)
+public void ApplyNewJump(int client)
 {
 	float vel[3];
 

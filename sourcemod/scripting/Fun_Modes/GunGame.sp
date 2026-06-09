@@ -17,9 +17,12 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_GunGame
+
 #include <EntWatch>
 
-#define _FM_GunGame
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "GunGame"
 
 static int g_iGunGameIndex = -1;
 
@@ -83,13 +86,13 @@ float g_fGunGame_RewardSpeed;
 
 bool g_bGunGame_Enabled;
 
-stock void OnPluginStart_GunGame()
+public void OnPluginStart_GunGame()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-    THIS_MODE_INFO.name = "GunGame";
-    THIS_MODE_INFO.tag = "{gold}[FunModes-GunGame]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
     RegAdminCmd("sm_fm_gungame", Cmd_GunGameToggle, ADMFLAG_CONVARS, "Turn GunGame Mode On/Off");
     RegAdminCmd("sm_gungame_settings", Cmd_GunGameSettings, ADMFLAG_CONVARS, "Open GunGame Sttings Menu");
@@ -155,7 +158,7 @@ stock void OnPluginStart_GunGame()
     THIS_MODE_INFO.enableIndex = GUNGAME_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_GunGame()
+public void InitCvarsValues_GunGame()
 {
     int modeIndex = THIS_MODE_INFO.index;
 
@@ -209,9 +212,7 @@ void GunGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue,
     }
 }
 
-stock void OnMapStart_GunGame() {}
-
-stock void OnMapEnd_GunGame()
+public void OnMapEnd_GunGame()
 {
     CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
@@ -219,7 +220,7 @@ stock void OnMapEnd_GunGame()
         g_GunGameData[i].rewardTimer = null;
 }
 
-stock void OnClientPutInServer_GunGame(int client)
+public void OnClientPutInServer_GunGame(int client)
 {
     if (!THIS_MODE_INFO.isOn)
         return;
@@ -240,12 +241,12 @@ stock void OnClientPutInServer_GunGame(int client)
     }
 }
 
-stock void OnClientDisconnect_GunGame(int client)
+public void OnClientDisconnect_GunGame(int client)
 {
     delete g_GunGameData[client].rewardTimer;
 }
 
-stock void ZR_OnClientInfected_GunGame(int client)
+public void ZR_OnClientInfected_GunGame(int client)
 {
     #pragma unused client
     if (!THIS_MODE_INFO.isOn)
@@ -269,15 +270,16 @@ stock void ZR_OnClientInfected_GunGame(int client)
     }
 }
 
-stock void Event_RoundStart_GunGame() {}
-
-stock void Event_RoundEnd_GunGame()
+public void Event_RoundEnd_GunGame()
 {
     for (int i = 1; i <= MaxClients; i++)
+    {
         g_GunGameData[i].allowEquip = true;
+        g_GunGameData[i].completedCycle = false;
+	}
 }
 
-stock void Event_PlayerSpawn_GunGame(int client)
+public void Event_PlayerSpawn_GunGame(int client)
 {
     if (!THIS_MODE_INFO.isOn || !g_bMotherZombie)
         return;
@@ -298,12 +300,7 @@ Action Timer_GunGame_CheckPlayerSpawn(Handle timer, int userid)
     return Plugin_Stop;
 }
 
-stock void Event_PlayerTeam_GunGame(Event event)
-{
-    #pragma unused event
-}
-
-stock void Event_PlayerDeath_GunGame(int client)
+public void Event_PlayerDeath_GunGame(int client)
 {
     if (!THIS_MODE_INFO.isOn)
         return;
@@ -311,7 +308,7 @@ stock void Event_PlayerDeath_GunGame(int client)
     GunGame_GiveReward(client, REWARD_NONE);
 }
 
-stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
+public void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
 {
     if (!THIS_MODE_INFO.isOn)
         return;
@@ -334,7 +331,7 @@ stock void OnTakeDamagePost_GunGame(int victim, int attacker, float damage)
     g_GunGameData[attacker].dealtDamage += RoundToNearest(damage);
 }
 
-stock void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
+public void OnWeaponEquip_GunGame(int client, int weapon, Action &result)
 {
     if (!THIS_MODE_INFO.isOn)
         return;
@@ -379,7 +376,7 @@ public Action CS_OnBuyCommand(int client, const char[] weapon)
     return Plugin_Continue;
 }
 
-stock void GunGame_ResetHuman(int client)
+public void GunGame_ResetHuman(int client)
 {
     GunGame_GiveReward(client, REWARD_NONE);
     g_GunGameData[client].ResetLevel();

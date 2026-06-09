@@ -8,18 +8,87 @@
 #pragma newdecls required
 #pragma semicolon 1
 
-#include "Fun_Modes/HealBeacon.sp"
-#include "Fun_Modes/VIPMode.sp"
-#include "Fun_Modes/Fog.sp"
-#include "Fun_Modes/RedLightGreenLight.sp"
-#include "Fun_Modes/DoubleJump.sp"
-#include "Fun_Modes/InvertedControls.sp"
-#include "Fun_Modes/DamageGame.sp"
-#include "Fun_Modes/BlindMode.sp"
-#include "Fun_Modes/SlapMode.sp"
-#include "Fun_Modes/ChaosWeapons.sp"
-#include "Fun_Modes/GunGame.sp"
-#include "Fun_Modes/MathGame.sp"
-#include "Fun_Modes/CrazyShop.sp"
-#include "Fun_Modes/RealityShift.sp"
-#include "Fun_Modes/PullGame.sp"
+/* For the existing FunModes, you can remove or comment the line where it includes the mode file if you want get rid of it. */
+#include "../HealBeacon.sp"
+#include "../VIPMode.sp"
+#include "../Fog.sp"
+#include "../RedLightGreenLight.sp"
+#include "../DoubleJump.sp"
+#include "../InvertedControls.sp"
+#include "../DamageGame.sp"
+#include "../BlindMode.sp"
+#include "../SlapMode.sp"
+#include "../ChaosWeapons.sp"
+#include "../GunGame.sp"
+#include "../MathGame.sp"
+#include "../CrazyShop.sp"
+#include "../RealityShift.sp"
+#include "../PullGame.sp"
+
+/*
+* Called on plugin start, kindly put your new mode's OnPluginStart call here if you are willing to add a new mode.
+*
+* @noparams
+*/
+public void Forwards_OnPluginStart()
+{
+#if defined _FM_HealBeacon
+    OnPluginStart_HealBeacon();
+#endif
+
+#if defined _FM_VIPMode
+    OnPluginStart_VIPMode();
+#endif
+
+#if defined _FM_Fog
+    OnPluginStart_Fog();
+#endif
+
+#if defined _FM_RLGL
+    OnPluginStart_RLGL();
+#endif
+
+#if defined _FM_DoubleJump
+    OnPluginStart_DoubleJump();
+#endif
+
+#if defined _FM_IC
+    OnPluginStart_IC();
+#endif
+
+#if defined _FM_DamageGame
+    OnPluginStart_DamageGame();
+#endif
+
+#if defined _FM_BlindMode
+    OnPluginStart_BlindMode();
+#endif
+
+#if defined _FM_SlapMode
+    OnPluginStart_SlapMode();
+#endif
+
+#if defined _FM_ChaosWeapons
+    OnPluginStart_ChaosWeapons();
+#endif
+
+#if defined _FM_GunGame
+    OnPluginStart_GunGame();
+#endif
+
+#if defined _FM_MathGame
+    OnPluginStart_MathGame();
+#endif
+
+#if defined _FM_CrazyShop
+    OnPluginStart_CrazyShop();
+#endif
+
+#if defined _FM_RealityShift
+    OnPluginStart_RealityShift();
+#endif
+
+#if defined _FM_PullGame
+    OnPluginStart_PullGame();
+#endif
+}

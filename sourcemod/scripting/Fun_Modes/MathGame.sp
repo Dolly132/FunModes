@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_MathGame
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "MathGame"
+
 static int g_iMathGameIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -45,13 +50,13 @@ int g_iMathGame_MaxTries;
 float g_fMathGame_TimeDelay;
 bool g_bMathGame_Enabled;
 
-stock void OnPluginStart_MathGame()
+public void OnPluginStart_MathGame()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "MathGame";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-MathGame]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_mathgame", Cmd_MathGameToggle, ADMFLAG_CONVARS, "Turn MathGame Mode On/Off");
 	RegAdminCmd("sm_mathgame_settings", Cmd_MathGameSettings, ADMFLAG_CONVARS, "Open MathGame Sttings Menu");
@@ -129,7 +134,7 @@ stock void OnPluginStart_MathGame()
 	THIS_MODE_INFO.enableIndex = MATHGAME_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_MathGame()
+public void InitCvarsValues_MathGame()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -189,9 +194,7 @@ void MathGame_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue
 	}
 }
 
-stock void OnMapStart_MathGame() {}
-
-stock void OnMapEnd_MathGame()
+public void OnMapEnd_MathGame()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 
@@ -200,24 +203,14 @@ stock void OnMapEnd_MathGame()
 	g_hMathGameTimerDelay = null;
 }
 
-stock void OnClientPutInServer_MathGame(int client)
+public void OnClientPutInServer_MathGame(int client)
 {
 	g_bMathGameHasQuestion[client] = false;
 	g_iMathGameFailedAnswers[client] = 0;
 	g_bMathGameDisableRespawn[client] = false;
 }
 
-stock void OnClientDisconnect_MathGame(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_MathGame(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_MathGame()
+public void Event_RoundStart_MathGame()
 {
 	if (!THIS_MODE_INFO.isOn)
 		return;
@@ -237,23 +230,6 @@ Action Timer_StartMathGame(Handle timer)
 
 	MathGame_Ask();
 	return Plugin_Stop;
-}
-
-stock void Event_RoundEnd_MathGame() {}
-
-stock void Event_PlayerSpawn_MathGame(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_MathGame(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_MathGame(int client)
-{
-	#pragma unused client
 }
 
 public Action ZR_OnClientRespawn(int &client, ZR_RespawnCondition &condition)

@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_SlapMode
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "SlapMode"
+
 static int g_iSlapModeIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -26,13 +31,13 @@ float g_fSlapModeInterval;
 int g_iSlapModeCount;
 bool g_bSlapModeEnabled;
 
-stock void OnPluginStart_SlapMode()
+public void OnPluginStart_SlapMode()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "SlapMode";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-SlapMode]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	RegAdminCmd("sm_fm_slapmode", Cmd_SlapModeToggle, ADMFLAG_CONVARS, "Turn SlapMode On/Off");
 	RegAdminCmd("sm_slapmode_settings", Cmd_SlapModeSettings, ADMFLAG_CONVARS, "Open SlapMode Settings Menu");
@@ -61,7 +66,7 @@ stock void OnPluginStart_SlapMode()
 	THIS_MODE_INFO.enableIndex = SLAPMODE_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_SlapMode()
+public void InitCvarsValues_SlapMode()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -92,45 +97,10 @@ void SlapMode_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue
 	}
 }
 
-stock void OnMapStart_SlapMode() {}
-
-stock void OnMapEnd_SlapMode()
+public void OnMapEnd_SlapMode()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
 	g_hSlapModeTimer = null;
-}
-
-stock void OnClientPutInServer_SlapMode(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_SlapMode(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_SlapMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_SlapMode() {}
-stock void Event_RoundEnd_SlapMode() {}
-
-stock void Event_PlayerSpawn_SlapMode(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_SlapMode(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_SlapMode(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_SlapModeToggle(int client, int args)

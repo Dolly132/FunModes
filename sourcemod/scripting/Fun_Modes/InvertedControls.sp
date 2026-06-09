@@ -8,6 +8,11 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#define _FM_IC
+
+#undef THIS_MODE_NAME
+#define THIS_MODE_NAME "IC"
+
 static int g_iICIndex = -1;
 
 #undef THIS_MODE_INDEX
@@ -21,13 +26,13 @@ static int g_iICIndex = -1;
 bool g_bIC_Enabled;
 
 /* CALLED ON PLUGIN START */
-stock void OnPluginStart_IC()
+public void OnPluginStart_IC()
 {
 	// Important, this must be first before filling any other mode info!
-	FUNMODES_REGISTER_MODE();
+	FUNMODES_REGISTER_MODE()
 
-	THIS_MODE_INFO.name = "IC";
-	THIS_MODE_INFO.tag = "{gold}[FunModes-InvertedControls]{lightgreen}";
+	THIS_MODE_INFO.name = THIS_MODE_NAME;
+	THIS_MODE_INFO.tag = "{gold}[FunModes-" ... THIS_MODE_NAME ... "]{lightgreen}";
 
 	/* Admin Commands */
 	static const char commands[][] =
@@ -57,7 +62,7 @@ stock void OnPluginStart_IC()
 	THIS_MODE_INFO.enableIndex = IC_CONVAR_TOGGLE;
 }
 
-void InitCvarsValues_IC()
+public void InitCvarsValues_IC()
 {
 	int modeIndex = THIS_MODE_INFO.index;
 
@@ -79,45 +84,9 @@ void IC_OnConVarChange(int modeIndex, int cvarIndex, const char[] oldValue, cons
 	}
 }
 
-stock void OnMapStart_IC() {}
-
-stock void OnMapEnd_IC()
+public void OnMapEnd_IC()
 {
 	CHANGE_MODE_INFO(THIS_MODE_INFO, isOn, false, THIS_MODE_INFO.index);
-}
-
-stock void OnClientPutInServer_IC(int client)
-{
-	#pragma unused client
-}
-
-stock void OnClientDisconnect_IC(int client)
-{
-	#pragma unused client
-}
-
-stock void ZR_OnClientInfected_IC(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_RoundStart_IC() {}
-
-stock void Event_RoundEnd_IC() {}
-
-stock void Event_PlayerSpawn_IC(int client)
-{
-	#pragma unused client
-}
-
-stock void Event_PlayerTeam_IC(Event event)
-{
-	#pragma unused event
-}
-
-stock void Event_PlayerDeath_IC(int client)
-{
-	#pragma unused client
 }
 
 public Action Cmd_ICToggle(int client, int args)
