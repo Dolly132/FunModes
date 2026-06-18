@@ -1,10 +1,3 @@
-/*
-    (). FunModes V2:
-        
-    @file           Core/Forwards.sp
-    @Usage          Modes Forwards Management, don't touch it if you don't know what you are doing!
-*/
-
 #pragma semicolon 1
 
 /* Forwards Flags */
@@ -24,6 +17,14 @@
 #define FWD_OnTakeDamage             (1 << 13)
 #define FWD_OnWeaponEquip            (1 << 14)
 #define FWD_OnPlayerRunCmdPost       (1 << 15)
+
+#define FWD_FLAG(%1) FWD_%1
+
+#define CALL_MODE_FORWARD0(%1,%2) 				%1_%2()
+#define CALL_MODE_FORWARD1(%1,%2,%3) 			%1_%2(%3)
+#define CALL_MODE_FORWARD2(%1,%2,%3,%4) 		%1_%2(%3, %4)
+#define CALL_MODE_FORWARD3(%1,%2,%3,%4,%5) 		%1_%2(%3, %4, %5)
+#define CALL_MODE_FORWARD4(%1,%2,%3,%4,%5,%6)	%1_%2(%3, %4, %5, %6)
 
 /* 
 * Checks whether a given forward can be executed for the current mode the compiler is reading.

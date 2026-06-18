@@ -30,6 +30,133 @@ static int g_iChaosWeaponsIndex = -1;
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
+// The main methodmap (With forward calls) for this mode.
+// This is very important, make sure all forwards are defined here or else there will be a compile error!
+// Always call LAST_MODE_TYPE.FORWARD_NAME in all forwards declaration.
+// It's preferred to use MODENAME_mm for methodmaps names.
+methodmap ChaosWeapons_mm
+{
+	public static void OnPluginStart()
+	{
+		OnPluginStart_ChaosWeapons();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginStart();
+	#endif
+	}
+
+	public static void OnPluginEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginEnd();
+	#endif
+	}
+
+	public static void OnMapStart()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapStart();
+	#endif
+	}
+
+	public static void OnMapEnd()
+	{
+		OnMapEnd_ChaosWeapons();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapEnd();
+	#endif
+	}
+
+	public static void OnClientPutInServer(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientPutInServer(client);
+	#endif
+	}
+
+	public static void OnClientDisconnect(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientDisconnect(client);
+	#endif
+	}
+
+	public static void ZR_OnClientInfected(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.ZR_OnClientInfected(client);
+	#endif
+	}
+
+	public static void Event_RoundStart()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundStart();
+	#endif
+	}
+
+	public static void Event_RoundEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundEnd();
+	#endif
+	}
+
+	public static void Event_PlayerSpawn(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerSpawn(client);
+	#endif
+	}
+
+	public static void Event_PlayerTeam(Event event)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerTeam(event);
+	#endif
+	}
+
+	public static void Event_PlayerDeath(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerDeath(client);
+	#endif
+	}
+
+	public static void OnTakeDamagePost(int victim, int attacker, float damage)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamagePost(victim, attacker, damage);
+	#endif
+	}
+
+	public static void OnTakeDamage(int victim, int attacker, float damage, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamage(victim, attacker, damage, result);
+	#endif
+	}
+
+	public static void OnWeaponEquip(int client, int weapon, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnWeaponEquip(client, weapon, result);
+	#endif
+	}
+
+	public static void OnPlayerRunCmdPost(int client, int buttons, int impulse)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPlayerRunCmdPost(client, buttons, impulse);
+	#endif
+	}
+}
+
+// Important! this should be in all modes files, LAST_MODE_TYPE here has to be the name of the main methodmap of this mode.
+#undef LAST_MODE_TYPE
+#define LAST_MODE_TYPE ChaosWeapons_mm
+
 #define CHAOSWEAPONS_CONVAR_TIMER_INTERVAL	0
 #define CHAOSWEAPONS_CONVAR_KNOCKBACK		1
 #define CHAOSWEAPONS_CONVAR_COUNTDOWN		2
@@ -103,6 +230,8 @@ public void OnPluginStart_ChaosWeapons()
 	THIS_MODE_INFO.cvars[CHAOSWEAPONS_CONVAR_TOGGLE].HookChange(ChaosWeapons_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = CHAOSWEAPONS_CONVAR_TOGGLE;
+
+	InitCvarsValues_ChaosWeapons();
 }
 
 public void InitCvarsValues_ChaosWeapons()

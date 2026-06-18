@@ -21,12 +21,16 @@
 
 #include "Fun_Modes/Core/Core.sp"
 
+#if !defined LAST_MODE_TYPE
+	#endinput
+#endif
+
 public Plugin myinfo =
 {
 	name = "FunModes",
 	author = "Dolly",
 	description = "bunch of fun modes for ze mode",
-	version = "2.8.0",
+	version = "2.5.0",
 	url = "https://nide.gg"
 }
 
@@ -41,9 +45,7 @@ public void OnPluginStart()
 
 	g_cvHUDChannel = CreateConVar("sm_funmodes_hud_channel", "4", "The channel for the hud if using DynamicChannels", _, true, 0.0, true, 5.0);
 
-	Forwards_OnPluginStart();
-
-	DECLARE_FM_FORWARD_PARAM0(InitCvarsValues)
+	LAST_MODE_TYPE.OnPluginStart();
 
 	AutoExecConfig();
 
@@ -97,7 +99,7 @@ public void OnPluginEnd()
 		OnClientDisconnect(i);
 	}
 
-	DECLARE_FM_FORWARD_PARAM0(OnPluginEnd)
+	LAST_MODE_TYPE.OnPluginEnd();
 }
 
 public void OnMapStart()
@@ -108,17 +110,17 @@ public void OnMapStart()
 
 	PrecacheSound(Beacon_Sound, true);
 
-	DECLARE_FM_FORWARD_PARAM0(OnMapStart)
+	LAST_MODE_TYPE.OnMapStart();
 }
 
 public void OnMapEnd()
 {
-	DECLARE_FM_FORWARD_PARAM0(OnMapEnd)
+	LAST_MODE_TYPE.OnMapEnd();
 }
 
 public void OnClientPutInServer(int client)
 {
-	DECLARE_FM_FORWARD_PARAM1(OnClientPutInServer, client)
+	LAST_MODE_TYPE.OnClientPutInServer(client);
 }
 
 public void OnClientDisconnect(int client)
@@ -126,12 +128,12 @@ public void OnClientDisconnect(int client)
 	g_bSDKHook_OnTakeDamagePost[client] = false;
 	g_bSDKHook_OnTakeDamage[client] = false;
 	g_bSDKHook_WeaponEquip[client] = false;
-	DECLARE_FM_FORWARD_PARAM1(OnClientDisconnect, client)
+	LAST_MODE_TYPE.OnClientDisconnect(client);
 }
 
 public void ZR_OnClientInfected(int client, int attacker, bool motherInfect)
 {		
-	DECLARE_FM_FORWARD_PARAM1(ZR_OnClientInfected, client)
+	LAST_MODE_TYPE.ZR_OnClientInfected(client);
 	if (motherInfect && !g_bMotherZombie)
 		g_bMotherZombie = true;
 }
@@ -140,43 +142,43 @@ void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	g_bRoundEnd = false;
 	g_bMotherZombie = false;
-	DECLARE_FM_FORWARD_PARAM0(Event_RoundStart)
+	LAST_MODE_TYPE.Event_RoundStart();
 }
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	g_bRoundEnd = true;
 	g_bMotherZombie = false;
-	DECLARE_FM_FORWARD_PARAM0(Event_RoundEnd)
+	LAST_MODE_TYPE.Event_RoundEnd();
 }
 
 void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	DECLARE_FM_FORWARD_PARAM1(Event_PlayerSpawn, client)
+	LAST_MODE_TYPE.Event_PlayerSpawn(client);
 }
 
 void Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
 {
-	DECLARE_FM_FORWARD_PARAM1(Event_PlayerTeam, event)
+	LAST_MODE_TYPE.Event_PlayerTeam(event);
 }
 
 void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	DECLARE_FM_FORWARD_PARAM1(Event_PlayerDeath, client)
+	LAST_MODE_TYPE.Event_PlayerDeath(client);
 }
 
 void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype)
 {
-	DECLARE_FM_FORWARD_PARAM3(OnTakeDamagePost, victim, attacker, damage)
+	LAST_MODE_TYPE.OnTakeDamagePost(victim, attacker, damage);
 }
 
 Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
 	Action result = Plugin_Continue;
 
-	DECLARE_FM_FORWARD_PARAM4(OnTakeDamage, victim, attacker, damage, result)
+	LAST_MODE_TYPE.OnTakeDamage(victim, attacker, damage, result);
 
 	return result;
 }
@@ -185,9 +187,14 @@ Action OnWeaponEquip(int client, int weapon)
 {
 	Action result = Plugin_Continue;
 
-	DECLARE_FM_FORWARD_PARAM3(OnWeaponEquip, client, weapon, result)
+	LAST_MODE_TYPE.OnWeaponEquip(client, weapon, result);
 
 	return result;
+}
+
+public void OnPlayerRunCmdPost(int client, int buttons, int impulse)
+{
+	LAST_MODE_TYPE.OnPlayerRunCmdPost(client, buttons, impulse);
 }
 
 /* Events Hooks functions */
@@ -229,11 +236,6 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if (strcmp(name, "DynamicChannels", false) == 0)
 		g_bPlugin_DynamicChannels = false;
-}
-
-public void OnPlayerRunCmdPost(int client, int buttons, int impulse)
-{
-	DECLARE_FM_FORWARD_PARAM3(OnPlayerRunCmdPost, client, buttons, impulse)
 }
 
 float GetDistanceBetween(int origin, int target, bool squarred = false)

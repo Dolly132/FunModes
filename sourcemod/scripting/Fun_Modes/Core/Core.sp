@@ -262,9 +262,6 @@ enum WeaponAmmoGrenadeType
 #define THIS_MODE_NAME
 #define THIS_MODE_INFO
 
-/* Modes Forwards Include */
-#include "Forwards.sp"
-
 enum struct ModeInfo 
 {
 	int index;
@@ -273,8 +270,6 @@ enum struct ModeInfo
 	FM_ConVar cvars[MAX_CVARS_NUM];
 	bool isOn;
 	int enableIndex;
-
-	FM_Forwards forwards;
 
 	int GetCvarsCount()
 	{
@@ -375,7 +370,6 @@ enum struct ModeInfo
 */
 #define FUNMODES_REGISTER_MODE() \
 		THIS_MODE_INDEX = g_iLastModeIndex++; \
-		THIS_MODE_INFO.index = THIS_MODE_INDEX; \
-		VALIDATE_FM_FORWARDS()
+		THIS_MODE_INFO.index = THIS_MODE_INDEX;
 
-#include "ModesInclude.sp"
+#include "Fun_Modes/Core/ModesInclude.sp"

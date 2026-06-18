@@ -8,6 +8,10 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+/*********************************************************************************************************************************/
+/* Start Section: Important Macros/Variables For Mode Header
+/*********************************************************************************************************************************/
+
 #define _FM_HealBeacon
 
 #undef THIS_MODE_NAME
@@ -22,6 +26,149 @@ int g_iHealBeaconIndex = -1;
 
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
+
+// The main methodmap (With forward calls) for this mode.
+// This is very important, make sure all forwards are defined here or else there will be a compile error!
+// Always call LAST_MODE_TYPE.FORWARD_NAME in all forwards declaration.
+// It's preferred to use MODENAME_mm for methodmaps names.
+methodmap HealBeacon_mm
+{
+	public static void OnPluginStart()
+	{
+		OnPluginStart_HealBeacon();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginStart();
+	#endif
+	}
+
+	public static void OnPluginEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginEnd();
+	#endif
+	}
+
+	public static void OnMapStart()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapStart();
+	#endif
+	}
+
+	public static void OnMapEnd()
+	{
+		OnMapEnd_HealBeacon();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapEnd();
+	#endif
+	}
+
+	public static void OnClientPutInServer(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientPutInServer(client);
+	#endif
+	}
+
+	public static void OnClientDisconnect(int client)
+	{
+		OnClientDisconnect_HealBeacon(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientDisconnect(client);
+	#endif
+	}
+
+	public static void ZR_OnClientInfected(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.ZR_OnClientInfected(client);
+	#endif
+	}
+
+	public static void Event_RoundStart()
+	{
+		Event_RoundStart_HealBeacon();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundStart();
+	#endif
+	}
+
+	public static void Event_RoundEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundEnd();
+	#endif
+	}
+
+	public static void Event_PlayerSpawn(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerSpawn(client);
+	#endif
+	}
+
+	public static void Event_PlayerTeam(Event event)
+	{
+		Event_PlayerTeam_HealBeacon(event);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerTeam(event);
+	#endif
+	}
+
+	public static void Event_PlayerDeath(int client)
+	{
+		Event_PlayerDeath_HealBeacon(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerDeath(client);
+	#endif
+	}
+
+	public static void OnTakeDamagePost(int victim, int attacker, float damage)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamagePost(victim, attacker, damage);
+	#endif
+	}
+
+	public static void OnTakeDamage(int victim, int attacker, float damage, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamage(victim, attacker, damage, result);
+	#endif
+	}
+
+	public static void OnWeaponEquip(int client, int weapon, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnWeaponEquip(client, weapon, result);
+	#endif
+	}
+
+	public static void OnPlayerRunCmdPost(int client, int buttons, int impulse)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPlayerRunCmdPost(client, buttons, impulse);
+	#endif
+	}
+}
+
+// Important! this should be in all modes files, LAST_MODE_TYPE here has to be the name of the main methodmap of this mode.
+#undef LAST_MODE_TYPE
+#define LAST_MODE_TYPE HealBeacon_mm
+
+/*********************************************************************************************************************************/
+/* End Section: Important Macros For Mode Header
+/*********************************************************************************************************************************/
+
+/*********************************************************************************************************************************/
+/* Start Section: Important Variables declarations for HealBeacon Mode 
+/*********************************************************************************************************************************/
 
 bool g_bIsBetterDamageModeOn;
 
@@ -87,7 +234,14 @@ enum struct BeaconPlayers
 
 BeaconPlayers g_BeaconPlayersData[MAXPLAYERS + 1];
 
-/* Called in OnPluginStart */
+/*********************************************************************************************************************************/
+/* End Section: Important Variables declarations for HealBeacon Mode 
+/*********************************************************************************************************************************/
+
+/*********************************************************************************************************************************/
+/* Start Section: Main Forwards-call functions, cvars initializations and change hooks
+/*********************************************************************************************************************************/
+
 public void OnPluginStart_HealBeacon()
 {
 	PrintToChatAll("Called HealBeacon OnPluginStart");
@@ -157,6 +311,8 @@ public void OnPluginStart_HealBeacon()
     THIS_MODE_INFO.cvars[HB_CONVAR_TOGGLE].HookChange(HealBeacon_OnConVarChange);
 
     THIS_MODE_INFO.enableIndex = HB_CONVAR_TOGGLE;
+
+	InitCvarsValues_HealBeacon();
 }
 
 public void InitCvarsValues_HealBeacon()
@@ -323,6 +479,14 @@ Action RoundStart_CountTimer(Handle timer)
     g_iCounter++;
     return Plugin_Continue;
 }
+
+/*********************************************************************************************************************************/
+/* End Section: Main Forwards-call functions, cvars initializations and change hooks
+/*********************************************************************************************************************************/
+
+/*********************************************************************************************************************************/
+/* Start Section: Other helper-functions for the HealBeacon Mode
+/*********************************************************************************************************************************/
 
 public void GetRandomPlayer()
 {
@@ -659,9 +823,13 @@ public void ReplaceBeacon(int client, int random, int target)
     CPrintToChatAll("%s %T", THIS_MODE_INFO.tag, "HealBeacon_ReplaceAnnounce", client, client, target, random);
 }
 
-/*---------------------*/
-/* COMMANDS CALLBACKS */
-/*---------------------*/
+/*********************************************************************************************************************************/
+/* End Section: Other helper-functions for the HealBeacon Mode
+/*********************************************************************************************************************************/
+
+/*********************************************************************************************************************************/
+/* Start Section: HealBeacon Commands Callbacks
+/*********************************************************************************************************************************/
 
 public Action Cmd_HealBeaconToggle(int client, int args)
 {
@@ -901,4 +1069,9 @@ Action Cmd_HealBeaconCheckDistance(int client, int args)
     return Plugin_Handled;
 }
 
+/*********************************************************************************************************************************/
+/* End Section: HealBeacon Commands Callbacks
+/*********************************************************************************************************************************/
+
+/* Include Menus helper */
 #include "Fun_Modes/HealBeacon_Menus.sp"

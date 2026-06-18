@@ -14,6 +14,145 @@ static int g_iDamageGameIndex = -1;
 #undef THIS_MODE_INFO
 #define THIS_MODE_INFO g_ModesInfo[THIS_MODE_INDEX]
 
+// The main methodmap (With forward calls) for this mode.
+// This is very important, make sure all forwards are defined here or else there will be a compile error!
+// Always call LAST_MODE_TYPE.FORWARD_NAME in all forwards declaration.
+// It's preferred to use MODENAME_mm for methodmaps names.
+methodmap DamageGame_mm
+{
+	public static void OnPluginStart()
+	{
+		OnPluginStart_DamageGame();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginStart();
+	#endif
+	}
+
+	public static void OnPluginEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPluginEnd();
+	#endif
+	}
+
+	public static void OnMapStart()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapStart();
+	#endif
+	}
+
+	public static void OnMapEnd()
+	{
+		OnMapEnd_DamageGame();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnMapEnd();
+	#endif
+	}
+
+	public static void OnClientPutInServer(int client)
+	{
+		OnClientPutInServer_DamageGame(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientPutInServer(client);
+	#endif
+	}
+
+	public static void OnClientDisconnect(int client)
+	{
+		OnClientDisconnect_DamageGame(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnClientDisconnect(client);
+	#endif
+	}
+
+	public static void ZR_OnClientInfected(int client)
+	{
+		ZR_OnClientInfected_DamageGame(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.ZR_OnClientInfected(client);
+	#endif
+	}
+
+	public static void Event_RoundStart()
+	{
+		Event_RoundStart_DamageGame();
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundStart();
+	#endif
+	}
+
+	public static void Event_RoundEnd()
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_RoundEnd();
+	#endif
+	}
+
+	public static void Event_PlayerSpawn(int client)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerSpawn(client);
+	#endif
+	}
+
+	public static void Event_PlayerTeam(Event event)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerTeam(event);
+	#endif
+	}
+
+	public static void Event_PlayerDeath(int client)
+	{
+		Event_PlayerDeath_DamageGame(client);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.Event_PlayerDeath(client);
+	#endif
+	}
+
+	public static void OnTakeDamagePost(int victim, int attacker, float damage)
+	{
+		OnTakeDamagePost_DamageGame(victim, attacker, damage);
+
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamagePost(victim, attacker, damage);
+	#endif
+	}
+
+	public static void OnTakeDamage(int victim, int attacker, float damage, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnTakeDamage(victim, attacker, damage, result);
+	#endif
+	}
+
+	public static void OnWeaponEquip(int client, int weapon, Action &result)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnWeaponEquip(client, weapon, result);
+	#endif
+	}
+
+	public static void OnPlayerRunCmdPost(int client, int buttons, int impulse)
+	{
+	#if defined LAST_MODE_TYPE
+		LAST_MODE_TYPE.OnPlayerRunCmdPost(client, buttons, impulse);
+	#endif
+	}
+}
+
+// Important! this should be in all modes files, LAST_MODE_TYPE here has to be the name of the main methodmap of this mode.
+#undef LAST_MODE_TYPE
+#define LAST_MODE_TYPE DamageGame_mm
+
 int g_iDealtDamage[MAXPLAYERS + 1] = {-1, ...};
 Handle g_hDamageGameTimer;
 bool g_bDamageGameDisable;
@@ -74,6 +213,8 @@ public void OnPluginStart_DamageGame()
 	THIS_MODE_INFO.cvars[DAMAGEGAME_CONVAR_TOGGLE].HookChange(DamageGame_OnConVarChange);
 
 	THIS_MODE_INFO.enableIndex = DAMAGEGAME_CONVAR_TOGGLE;
+
+	InitCvarsValues_DamageGame();
 }
 
 public void InitCvarsValues_DamageGame()
